@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.os.Looper
 import app.orbit.dial.core.DialEvent
 import app.orbit.dial.core.Kind
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +55,7 @@ class EntryPointSecurityTest {
         assertNotNull(dialog); assertTrue(dialog.isShowing)
         assertTrue(events.isEmpty())
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertEquals(listOf(Kind.HOLD), events.map { it.kind })
         activity.pause().stop().destroy()
     }
@@ -61,6 +63,7 @@ class EntryPointSecurityTest {
     @Test fun cancellingHoldCannotTriggerAnAction() {
         val activity = Robolectric.buildActivity(HoldTrampolineActivity::class.java).setup()
         ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         assertTrue(events.isEmpty())
         activity.pause().stop().destroy()
     }
@@ -77,6 +80,7 @@ class EntryPointSecurityTest {
         val activity = Robolectric.buildActivity(HoldTrampolineActivity::class.java).setup()
         Orbit.prefs(ctx).edit().putBoolean("enabled", false).commit()
         ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
         Orbit.emit(ctx, DialEvent(Kind.DOUBLE, 0, "late-event"))
         assertTrue(events.isEmpty())
         activity.pause().stop().destroy()
