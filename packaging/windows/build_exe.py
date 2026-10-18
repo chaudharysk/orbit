@@ -37,6 +37,7 @@ def main():
         "--collect-submodules", "comtypes",
         "--hidden-import", "uiautomation",
         "--exclude-module", "PIL", "--exclude-module", "pytest", "--exclude-module", "tkinter",
+        "--exclude-module", "orbit.platform.dev", "--exclude-module", "orbit.inject",
         "--hidden-import", "orbit.ui.settings_window",
         "--version-file", str(version_file()),
         "packaging/orbit_main.py",

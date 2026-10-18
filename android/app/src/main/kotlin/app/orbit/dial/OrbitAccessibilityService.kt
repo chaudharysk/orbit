@@ -61,7 +61,12 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
     private fun buildEngine(): Engine {
         val s = SettingsStore.load(this)
         overlay.state.appearance = s.appearance
-        return s.buildEngine(this, overlay, Orbit.rotation, defaultTools())
+        return s.buildEngine(this, overlay, Orbit.rotation, defaultTools()).also { it.setEnabled(Orbit.enabled(this)) }
+    }
+
+    fun setOrbitEnabled(on: Boolean) {
+        if (::engine.isInitialized) engine.setEnabled(on)
+        if (!on) swipes.clear()
     }
 
     private val ticker = object : Runnable {
@@ -76,7 +81,7 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
         prefsListener = SettingsStore.listen(this) {
             main.removeCallbacks(rebuild); main.postDelayed(rebuild, 150)          // one rebuild per save
         }
-        scope.launch { Orbit.events.collect { ev -> engine.handle(ev) } }
+        scope.launch { Orbit.events.collect { ev -> if (Orbit.enabled(this@OrbitAccessibilityService)) engine.handle(ev) } }
         main.post(ticker)
         if (BuildConfig.DEBUG) registerDebugInjector()
         OrbitMediaService.start(this)
@@ -92,13 +97,13 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
                 val spec = i.getStringExtra("e") ?: return
                 val parts = spec.split(":")
                 runCatching {
-                    Orbit.emit(app.orbit.dial.core.DialEvent(app.orbit.dial.core.Kind.valueOf(parts[0].uppercase()),
+                    Orbit.emit(this@OrbitAccessibilityService, app.orbit.dial.core.DialEvent(app.orbit.dial.core.Kind.valueOf(parts[0].uppercase()),
                         parts.getOrNull(1)?.toIntOrNull() ?: 0, "debug"))
                 }
             }
         }
         androidx.core.content.ContextCompat.registerReceiver(this, debugRx, android.content.IntentFilter("app.orbit.dial.DEBUG_EMIT"),
-            androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
+            android.Manifest.permission.DUMP, main, androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
     }
 
     override fun onDestroy() {
@@ -143,6 +148,7 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
     }
 
     private fun nextSwipe() {
+        if (!Orbit.enabled(this)) { swipes.clear(); swiping = false; return }
         val (dir, sideways) = swipes.removeFirstOrNull() ?: run { swiping = false; return }
         swiping = true
         val dm = resources.displayMetrics
@@ -327,7 +333,7 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
             else -> return
         }
         // let the wheel's close animation clear the screen before a screenshot
-        main.postDelayed({ performGlobalAction(id) }, if (action == "screenshot") 450 else 0)
+        main.postDelayed({ if (Orbit.enabled(this)) performGlobalAction(id) }, if (action == "screenshot") 450 else 0)
     }
 
     // ---- media: to the real player (we own the media buttons, so we can't just dispatch keys)

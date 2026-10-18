@@ -57,6 +57,33 @@ class EngineTest {
         assertEquals("volume", e.tool.id); assertEquals(true, passthrough)
     }
 
+    @Test fun disabledEngineRejectsInputAndCancelsPendingActions() {
+        val e = engine()
+        e.ev(Kind.DOUBLE)
+        e.ev(Kind.ROTATE, 3)
+        e.setEnabled(false)
+        log.clear(); huds.clear()
+        for (kind in listOf(Kind.CLICK, Kind.DOUBLE, Kind.TRIPLE, Kind.HOLD, Kind.ROTATE)) e.ev(kind, if (kind == Kind.ROTATE) 1 else 0)
+        e.openWheel(); e.setTool("scroll"); e.tick(now + 60_000)
+        assertEquals(Engine.State.TOOL, e.state)
+        assertEquals("volume", e.tool.id)
+        assertEquals(true, passthrough)
+        assertTrue(log.isEmpty()); assertTrue(huds.isEmpty())
+        e.setEnabled(true)
+        e.ev(Kind.HOLD)
+        assertTrue(log.contains("launch:com.anthropic.claude"))
+    }
+
+    @Test fun hostileRotationValuesCannotDriveTools() {
+        val e = engine()
+        e.setTool("scroll")
+        log.clear(); huds.clear()
+        for (delta in listOf(0, 17, -17, Int.MIN_VALUE, Int.MAX_VALUE)) e.ev(Kind.ROTATE, delta)
+        assertTrue(log.isEmpty()); assertTrue(huds.isEmpty())
+        e.ev(Kind.ROTATE, 1)
+        assertTrue(log.any { it.startsWith("swipe:") })
+    }
+
     @Test fun doubleOpensRotateMovesPressSelects() {
         val e = engine()
         e.ev(Kind.DOUBLE)

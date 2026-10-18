@@ -77,7 +77,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        applyDebugExtras(intent)
         setContent {
             MaterialTheme(colorScheme = OrbitColors) {
                 Home(refresh)
@@ -85,17 +84,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); applyDebugExtras(intent) }
     override fun onResume() { super.onResume(); refresh++ ; if (a11yOn()) OrbitMediaService.start(this) }   // start() is a no-op when Orbit is off
-
-    /** adb shell am start -n app.orbit.dial/.MainActivity --ez require_bt false  (emulator testing) */
-    private fun applyDebugExtras(i: Intent) {
-        if (i.hasExtra("require_bt")) Orbit.setRequireBluetooth(this, i.getBooleanExtra("require_bt", true))
-        i.getStringExtra("emit")?.let { spec ->           // --es emit "rotate:1" | "double" | "click" ...
-            val (k, d) = (spec.split(":") + "0").let { it[0] to it[1].toIntOrNull() }
-            runCatching { Orbit.emit(DialEvent(Kind.valueOf(k.uppercase()), d ?: 0, "intent")) }
-        }
-    }
 
     // ---- status checks
     fun a11yOn(): Boolean {

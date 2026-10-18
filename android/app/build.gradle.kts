@@ -8,8 +8,8 @@ plugins {
 
 // Release signing: a keystore outside the repo. Locally ~/.orbit-keys/signing.properties
 // (storeFile, storePassword, keyAlias, keyPassword); in CI the ORBIT_KEYSTORE* env vars.
-// Without either, release builds fall back to the debug key (fine for local testing,
-// but phones only accept updates signed with the same key, so publish with the real one).
+// A release is never signed with a debug key. Missing release credentials leave
+// an unsigned artifact for external signing; the publishing workflow requires a key.
 val signingProps = Properties().apply {
     val f = file("${System.getProperty("user.home")}/.orbit-keys/signing.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -24,11 +24,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "app.orbit.dial"
+        applicationId = System.getenv("ORBIT_APPLICATION_ID") ?: "app.orbit.dial"
         minSdk = 26
         targetSdk = 35
         versionCode = (System.getenv("ORBIT_VERSION_CODE") ?: "1").toInt()
-        versionName = System.getenv("ORBIT_VERSION") ?: "0.1.1"
+        versionName = System.getenv("ORBIT_VERSION") ?: "0.1.2"
     }
 
     signingConfigs {
@@ -44,7 +44,7 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {

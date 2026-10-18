@@ -4,7 +4,7 @@
 Writes android/app/src/main/res/drawable/ic_<name>.xml (white strokes; tinted in Compose).
 """
 import re
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

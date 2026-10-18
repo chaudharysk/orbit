@@ -25,6 +25,7 @@ done
 iconutil -c icns "$ICONSET" -o build/Orbit.icns
 
 python -m PyInstaller --noconfirm --windowed --name Orbit --icon build/Orbit.icns \
+  --exclude-module orbit.platform.dev --exclude-module orbit.inject \
   --osx-bundle-identifier app.orbit.dial \
   --add-data "orbit/ui/qml:orbit/ui/qml" \
   --add-data "orbit/ui/icons:orbit/ui/icons" \
@@ -39,7 +40,7 @@ python -m PyInstaller --noconfirm --windowed --name Orbit --icon build/Orbit.icn
 
 PLIST=dist/Orbit.app/Contents/Info.plist
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :LSMinimumSystemVersion string 13.0" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :LSMinimumSystemVersion string 14.0" "$PLIST"
 /usr/libexec/PlistBuddy -c "Add :NSAppleEventsUsageDescription string 'Orbit forwards play/pause/next from the dial to your music app.'" "$PLIST"
 SIGN_ID="${ORBIT_SIGN_ID:-}"
 # no -v: a self-signed root is never "valid" (not trusted) unless marked Always Trust,

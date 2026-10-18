@@ -3,13 +3,10 @@
 Sources
   VolumeRotationSource   rotation   (AVRCP absolute volume on the buds endpoint)
   MediaButtonSource      clicks     (AVRCP play/pause/next/prev via our own SMTC session)
-  BluetoothPacketSource  hold       (HFP AT+BVRA from raw HCI via ETW, admin only)
+  hold                   disabled  (ETW requires a protected privileged helper)
 """
 from __future__ import annotations
 
-import ctypes
-import subprocess
-import sys
 from pathlib import Path
 
 from orbit.platform.base import Platform
@@ -28,13 +25,13 @@ class WindowsPlatform(Platform):
         self._media = None
 
     def create_sources(self, cfg):
-        from orbit.platform.windows.input_bt import BluetoothPacketSource
         from orbit.platform.windows.input_media import MediaButtonSource
         from orbit.platform.windows.input_volume import VolumeRotationSource
 
         self._media = MediaButtonSource(cache_dir())
         self._volume = VolumeRotationSource(cfg["device"]["audio_endpoint_match"])
-        return [self._volume, self._media, BluetoothPacketSource()]
+        # ETW hold tracing requires elevation. Never elevate the UI or user actions.
+        return [self._volume, self._media]
 
     def create_services(self, cfg):
         from orbit.platform.windows.flyout import FlyoutSuppressor
@@ -52,6 +49,4 @@ class WindowsPlatform(Platform):
         return etw.is_admin()
 
     def relaunch_elevated(self, argv):
-        params = subprocess.list2cmdline(argv)
-        rc = ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 1)
-        return rc > 32
+        return False

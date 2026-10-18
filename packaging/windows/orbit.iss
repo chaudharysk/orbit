@@ -1,10 +1,10 @@
 ; Orbit installer (Inno Setup 6). Build dist/Orbit first (packaging/windows/build_exe.py):
 ;   iscc /DAppVersion=0.1.0 packaging\windows\orbit.iss   ->  dist\OrbitSetup-0.1.0.exe
-; Per-user install (no admin needed to install). Orbit itself asks for admin when it
-; starts, because reading press-and-hold needs it.
+; Protected program files; remove legacy elevated startup during upgrades.
+; Orbit itself runs in the original user's unelevated session.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.1.2"
 #endif
 
 [Setup]
@@ -14,10 +14,11 @@ AppVersion={#AppVersion}
 AppPublisher=Orbit
 AppPublisherURL=https://github.com/harsha20599/orbit
 AppSupportURL=https://github.com/harsha20599/orbit/issues
-DefaultDirName={localappdata}\Programs\Orbit
+DefaultDirName={autopf}\Orbit
+UsePreviousAppDir=no
 DefaultGroupName=Orbit
 DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 OutputDir=..\..\dist
 OutputBaseFilename=OrbitSetup-{#AppVersion}
 SetupIconFile=..\..\build\orbit.ico
@@ -28,6 +29,7 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=force
+RestartApplications=no
 
 [Tasks]
 Name: "autostart"; Description: "Start Orbit when I sign in"; Flags: checkedonce
@@ -41,8 +43,13 @@ Name: "{group}\Orbit"; Filename: "{app}\Orbit.exe"
 Name: "{userdesktop}\Orbit"; Filename: "{app}\Orbit.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Orbit.exe"; Parameters: "--autostart on"; Description: "Start Orbit now"; Flags: nowait postinstall skipifsilent; Tasks: autostart
-Filename: "{app}\Orbit.exe"; Description: "Start Orbit now"; Flags: nowait postinstall skipifsilent; Tasks: not autostart
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM Orbit.exe /T"; Flags: runhidden waituntilterminated
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /F /TN Orbit"; Flags: runhidden waituntilterminated
+Filename: "{app}\Orbit.exe"; Parameters: "--autostart on"; Description: "Start Orbit now"; Flags: nowait postinstall skipifsilent runasoriginaluser; Tasks: autostart
+Filename: "{app}\Orbit.exe"; Parameters: "--autostart off"; Description: "Start Orbit now"; Flags: nowait postinstall skipifsilent runasoriginaluser; Tasks: not autostart
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "Orbit"; Flags: uninsdeletevalue dontcreatekey
 
 [UninstallRun]
 ; remove the sign-in task (created by Orbit, elevated); harmless if it doesn't exist

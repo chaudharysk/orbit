@@ -1,3 +1,23 @@
+# 0.1.2 security update
+
+- Windows runs without administrator privileges. The installer removes the old
+  elevated startup task; sign-in startup now runs as the normal user.
+- Windows press-and-hold tracing is disabled pending a protected helper. Rotation
+  and single/double/triple press controls remain available.
+- Android ignores external test extras, confirms hold requests on an unlocked
+  device, and blocks dial actions while off.
+- Developer input is authenticated and unavailable in packaged desktop builds.
+- Build dependencies and Actions are pinned, Gradle downloads are verified, and
+  Kotlin includes the build-cache security fix. Android APK signing is verified.
+- This fork's Android build installs separately from upstream using application
+  ID `app.orbit.dial.chaudharysk`.
+- macOS now requires version 14 or newer for the pinned Qt release.
+
+Windows/macOS builds do not have commercial publisher signing/notarization.
+See SECURITY.md for the security changes and remaining platform limitations.
+
+---
+
 **Orbit 0.1.1**: fixes from the first wave of users. Thank you for the reports!
 
 **Fixed**

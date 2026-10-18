@@ -39,7 +39,7 @@ def tinted_url(icon: str, color: str) -> str:
     stroke = f'stroke="{color}"'
     if len(color) == 9:                       # QML's #aarrggbb -> SVG colour + opacity
         stroke = f'stroke="#{color[3:]}" stroke-opacity="{int(color[1:3], 16) / 255:.3f}"'
-    key = hashlib.sha1(f"{src}|{src.stat().st_mtime}|{color}".encode()).hexdigest()[:16]
+    key = hashlib.sha256(f"{src}|{src.stat().st_mtime}|{color}".encode()).hexdigest()[:16]
     out = TINT_DIR / f"{src.stem}-{key}.svg"
     if not out.exists():
         TINT_DIR.mkdir(parents=True, exist_ok=True)

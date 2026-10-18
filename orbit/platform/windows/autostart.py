@@ -1,19 +1,14 @@
-"""Start Orbit at sign-in, already elevated (press-and-hold needs admin).
-
-A Run-key entry would raise a UAC prompt at every sign-in; a scheduled task with
-"run with highest privileges" starts elevated silently. Creating it needs admin,
-which Orbit has when it offers this. Packaged builds only: a source checkout has
-no single executable to point the task at.
-"""
+"""Normal-user sign-in startup. The installer removes the old elevated task."""
 from __future__ import annotations
 
 import logging
 import subprocess
 import sys
+import winreg
 
 log = logging.getLogger("orbit.autostart")
-TASK = "Orbit"
-NO_WINDOW = 0x08000000
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+VALUE = "Orbit"
 
 
 def available() -> bool:
@@ -21,19 +16,26 @@ def available() -> bool:
 
 
 def enabled() -> bool:
-    r = subprocess.run(["schtasks", "/Query", "/TN", TASK], capture_output=True, creationflags=NO_WINDOW)
-    return r.returncode == 0
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            value, kind = winreg.QueryValueEx(key, VALUE)
+        return kind == winreg.REG_SZ and value == subprocess.list2cmdline([sys.executable])
+    except OSError:
+        return False
 
 
 def set_enabled(on: bool) -> bool:
-    if on:
-        cmd = ["schtasks", "/Create", "/F", "/TN", TASK, "/SC", "ONLOGON", "/RL", "HIGHEST",
-               "/DELAY", "0000:10", "/TR", f'"{sys.executable}"']
-    else:
-        cmd = ["schtasks", "/Delete", "/F", "/TN", TASK]
-    r = subprocess.run(cmd, capture_output=True, text=True, creationflags=NO_WINDOW)
-    if r.returncode != 0:
-        log.warning("autostart %s failed: %s", "on" if on else "off", (r.stderr or r.stdout).strip())
+    try:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as key:
+            if on:
+                winreg.SetValueEx(key, VALUE, 0, winreg.REG_SZ, subprocess.list2cmdline([sys.executable]))
+            else:
+                try:
+                    winreg.DeleteValue(key, VALUE)
+                except FileNotFoundError:
+                    pass
+    except OSError:
+        log.exception("could not change sign-in startup")
         return False
     log.info("start with Windows: %s", "on" if on else "off")
     return True

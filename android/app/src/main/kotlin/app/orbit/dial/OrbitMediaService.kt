@@ -99,7 +99,7 @@ class OrbitMediaService : Service() {
                 ourSet = idx to Clock.now()
                 am.setStreamVolume(stream, idx, 0)
             }
-        }, { ev -> main.post { Orbit.emit(ev) } }, "android-volume",
+        }, { ev -> main.post { Orbit.emit(this, ev) } }, "android-volume",
             streamSteps = am.getStreamMaxVolume(stream).coerceAtLeast(1))
         dial.rebase()
         Orbit.media = this
@@ -176,7 +176,7 @@ class OrbitMediaService : Service() {
         if (kind == lastPressKind && now - lastPressAt < 150) return
         lastPressAt = now; lastPressKind = kind
         Orbit.log("press: $how")
-        Orbit.emit(DialEvent(kind, 0, "media-session"))
+        Orbit.emit(this, DialEvent(kind, 0, "media-session"))
     }
 
     private fun startSilence() {

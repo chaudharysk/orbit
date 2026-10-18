@@ -8,6 +8,11 @@ dial_log.txt
 trace/hold.etl
 tools/*.txt
 android/.gradle/
+android/.kotlin/
+*.jks
+*.keystore
+*.p12
+signing.properties
 android/build/
 android/app/build/
 android/local.properties

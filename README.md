@@ -12,12 +12,12 @@ Android**. Free and open source.
 
 ## Download
 
-Get the latest version from **[Releases](https://github.com/harsha20599/orbit/releases/latest)**:
+Get the latest version from **[Releases](https://github.com/chaudharysk/orbit/releases/latest)**:
 
 | | File | Install |
 |---|---|---|
-| **Windows 10 / 11** | `Orbit-Windows-Setup.exe` | Run it. Windows may say "Windows protected your PC": click **More info → Run anyway** (the app isn't code-signed yet). When Orbit starts it asks for admin: say yes, it's needed to read press-and-hold. |
-| **macOS 13+** (Apple Silicon) | `Orbit-macOS.zip` | Unzip, drag **Orbit.app** to Applications. The first time, **right-click → Open** (it isn't notarized yet). Allow **Accessibility** when asked (System Settings → Privacy & Security → Accessibility). |
+| **Windows 10 / 11** | `Orbit-Windows-Setup.exe` | Run it. Windows may say "Windows protected your PC": click **More info → Run anyway** (the app isn't code-signed yet). The installer asks for admin to protect the program files and remove legacy startup. Orbit itself runs without admin. |
+| **macOS 14+** (Apple Silicon) | `Orbit-macOS.zip` | Unzip, drag **Orbit.app** to Applications. The first time, **right-click → Open** (it isn't notarized yet). Allow **Accessibility** when asked (System Settings → Privacy & Security → Accessibility). |
 | **Android 8+** | `Orbit-Android.apk` | Open it on the phone and allow installing from your browser. Then in Orbit, follow the setup checklist. If the Accessibility switch is greyed out: App info → ⋮ → **Allow restricted settings**. |
 
 ## Before you start: set the dial's gestures
@@ -44,7 +44,7 @@ turns green the moment a press arrives.
 | **Press** | the tool's action (or play / pause) | choose it |
 | **Double press** | open the wheel | close |
 | **Triple press** | back to the previous tool | close |
-| **Hold** | Windows: Claude dictation · Android: open Claude | close |
+| **Hold** | Windows: unavailable · Android: confirm, then open Claude | close |
 
 Optional tools you can switch on in Settings include **Teleprompter** on Android (turn to move
 the script, press to play / pause, for apps like NEEWER Teleprompter).
@@ -59,7 +59,7 @@ home screen): which tools are on the wheel and in what order, what each press do
   drop the rest, so Orbit makes fast turning go further to compensate. Slow clicks are exact.
 - **Each click makes a small tone in the buds.** That's the buds' firmware; Orbit can't turn it off.
 - **macOS shows its own volume slider** on each click. macOS doesn't let apps hide it.
-- **Press-and-hold** works on Windows (with admin) and Android; macOS doesn't pass it to apps.
+- **Press-and-hold** requires confirmation on Android. Windows hold tracing is disabled for security; macOS doesn't pass it to apps.
 - **Privacy:** Orbit runs only on your device and sends nothing anywhere. On Android, its
   accessibility service draws the wheel and performs the actions you pick; it reads only the
   name of the app in front (for the app switcher) and, when you press with the Camera tool,
@@ -83,7 +83,7 @@ home screen): which tools are on the wheel and in what order, what each press do
 
 ## Help and feedback
 
-Found a bug or have an idea? **[Open an issue](https://github.com/harsha20599/orbit/issues/new/choose)**.
+Found a bug or have an idea? **[Open an issue](https://github.com/chaudharysk/orbit/issues/new/choose)**.
 Logs help a lot: tray / menu-bar icon → Open log (Windows `%LOCALAPPDATA%\Orbit\orbit.log`,
 macOS `~/.orbit/orbit.log`); on Android, Help → **Report a problem** copies the log.
 
@@ -103,7 +103,7 @@ tool, **press** to use it. After that, turning and pressing drive the chosen too
 | Code | `orbit/` (Python) | `orbit/` (Python) | `android/` (Kotlin) |
 | Turn | ✅ verified with the buds | built, CI-tested, **needs a Mac + buds** | built, emulator-tested, **needs a phone + buds** |
 | Press / double / triple | ✅ verified | built (MPRemoteCommandCenter) | ✅ emulator (same path as the buds) |
-| Hold | ✅ (admin) → Claude dictation | not observable on macOS | ✅ emulator (VOICE_COMMAND) → Claude |
+| Hold | disabled pending a protected helper | not observable on macOS | ✅ emulator (VOICE_COMMAND) → Claude |
 | Wheel + HUD | ✅ | built (Qt, same QML) | ✅ emulator |
 
 ## Gestures (all platforms)
@@ -114,7 +114,7 @@ tool, **press** to use it. After that, turning and pressing drive the chosen too
 | Press | tool's click, else play/pause on your music app | **select** |
 | Double press | **open wheel** | close, no change |
 | Triple press | back to the previous tool (Volume: next track) | close, no change |
-| Hold | Windows: Claude Quick Entry + voice typing · Android: open Claude · macOS: — | close, no change |
+| Hold | Windows: disabled · Android: confirm, then open Claude · macOS: — | close, no change |
 | Wait 5 s | — | keeps the highlighted tool (one-shot actions never fire on timeout) |
 
 Fast spins go further (scroll, brightness); careful single clicks stay exact; turning
@@ -124,10 +124,11 @@ each click's volume blip stays soft. (The tone per click is the buds' firmware.)
 ## Windows
 
 ```
-pip install -r requirements.txt
-python -m orbit              # asks for admin (only needed for press-and-hold)
-python -m orbit --no-elevate # everything except hold
-python -m orbit --dev        # also accept test events: python -m orbit.inject double
+pip install --require-hashes -r requirements-lock.windows.txt
+python -m orbit              # run normally, without administrator privileges
+# Source-only testing, in PowerShell; share this random token with the injector:
+$env:ORBIT_DEV_TOKEN = (py -c "import secrets; print(secrets.token_urlsafe(32))")
+python -m orbit --dev        # inject from a terminal with the same ORBIT_DEV_TOKEN
 ```
 Desktop tools include Timeline (DaVinci Resolve / Premiere / Final Cut: careful clicks step a frame, fast turning jumps with Shift+arrow, press = play/pause), Slides (one slide per click, press = black screen) and Camera (press = shutter in the Windows Camera app / Photo Booth; off the wheel by default).
 
@@ -143,7 +144,7 @@ bar". Log: `%LOCALAPPDATA%\Orbit\orbit.log`. Brightness drives Twinkle Tray if i
 ## macOS
 
 ```
-pip install -r requirements.txt       # pulls the PyObjC frameworks on macOS
+pip install --require-hashes -r requirements-lock.macos.txt
 python -m orbit
 ```
 1. Pair the buds and make them the output device.
@@ -167,7 +168,7 @@ open **Orbit**, and work through the checklist:
 1. Notifications · 2. Accessibility (draws the wheel, performs actions — if the switch
 is greyed out: App info → ⋮ → Allow restricted settings) · 3. Notification access (so a
 press still plays/pauses your music app) · 4. Press-and-hold: tap, pick **Orbit →
-Always** · 5. Modify system settings (Brightness tool).
+Always**; each external hold request requires confirmation on an unlocked device · 5. Modify system settings (Brightness tool).
 
 Android tools: Volume, Brightness, Slides (one sideways swipe per click), Camera (press the dial = shutter; opens the camera if needed), Scroll (one flick per click: next / previous reel,
 Short or story; about a page in lists), Apps (a strip of recent-app icons: each click
@@ -181,7 +182,7 @@ one-shot Screenshot and Claude. Known limits: the system volume panel flashes pe
 |---|---|---|---|---|
 | Turn | AVRCP absolute volume (1/15–1/16 per click, ≤ ~3/s) | endpoint volume callback | CoreAudio VirtualMainVolume | 40 ms poll of STREAM_MUSIC |
 | Press ×1/2/3 | AVRCP play-pause / next / previous | own SMTC session | own now-playing session | own MediaSession |
-| Hold | HFP `AT+BVRA=1` (or `=0`, the buds toggle) | raw HCI via ETW (admin) | — | VOICE_COMMAND intent |
+| Hold | HFP `AT+BVRA=1` (or `=0`, the buds toggle) | disabled pending a protected helper | — | VOICE_COMMAND with confirmation |
 
 Turning is borrowed from volume, so `orbit/core/volume_dial.py` (and its Kotlin port)
 learns the click size, treats any change in a direction as at least one click, filters

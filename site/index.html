@@ -111,7 +111,7 @@
   <header>
     <img src="orbit.png" alt="">
     <b>Orbit</b>
-    <nav><a href="#how">How it works</a><a href="#download">Download</a><a href="#faq">FAQ</a><a href="https://github.com/harsha20599/orbit">GitHub</a></nav>
+    <nav><a href="#how">How it works</a><a href="#download">Download</a><a href="#faq">FAQ</a><a href="https://github.com/chaudharysk/orbit">GitHub</a></nav>
   </header>
 
   <div class="hero">
@@ -181,11 +181,11 @@
       <b>double</b> Next track, <b>triple</b> Previous track, <b>hold</b> Voice assistant. Orbit listens for exactly those.
       Then install Orbit:</p>
     <div class="plat">
-      <div><h3>Windows</h3><p>Windows 10 or 11. If Windows says "protected your PC", choose <i>More info → Run anyway</i>. Allow admin when Orbit starts (for press-and-hold).</p><a class="btn primary" href="https://github.com/harsha20599/orbit/releases/latest/download/Orbit-Windows-Setup.exe">Download for Windows</a></div>
-      <div><h3>macOS</h3><p>macOS 13+ on Apple Silicon. Unzip, move to Applications, right-click → <i>Open</i> the first time, then allow Accessibility.</p><a class="btn primary" href="https://github.com/harsha20599/orbit/releases/latest/download/Orbit-macOS.zip">Download for Mac</a></div>
-      <div><h3>Android</h3><p>Android 8+. Install the APK, then follow the checklist in the app. If a switch is greyed out: App info → ⋮ → <i>Allow restricted settings</i>.</p><a class="btn primary" href="https://github.com/harsha20599/orbit/releases/latest/download/Orbit-Android.apk">Download for Android</a></div>
+      <div><h3>Windows</h3><p>Windows 10 or 11. If Windows says "protected your PC", choose <i>More info → Run anyway</i>. The installer requests admin; Orbit runs normally without it. Hold tracing is disabled for security.</p><a class="btn primary" href="https://github.com/chaudharysk/orbit/releases/latest/download/Orbit-Windows-Setup.exe">Download for Windows</a></div>
+      <div><h3>macOS</h3><p>macOS 14+ on Apple Silicon. Unzip, move to Applications, right-click → <i>Open</i> the first time, then allow Accessibility.</p><a class="btn primary" href="https://github.com/chaudharysk/orbit/releases/latest/download/Orbit-macOS.zip">Download for Mac</a></div>
+      <div><h3>Android</h3><p>Android 8+. Install the APK, then follow the checklist in the app. If a switch is greyed out: App info → ⋮ → <i>Allow restricted settings</i>.</p><a class="btn primary" href="https://github.com/chaudharysk/orbit/releases/latest/download/Orbit-Android.apk">Download for Android</a></div>
     </div>
-    <p class="fine">Every version and its notes: <a href="https://github.com/harsha20599/orbit/releases">all releases</a>. Want to know about updates? Click <i>Watch → Custom → Releases</i> on <a href="https://github.com/harsha20599/orbit">GitHub</a>.</p>
+    <p class="fine">Every version and its notes: <a href="https://github.com/chaudharysk/orbit/releases">all releases</a>. Want to know about updates? Click <i>Watch → Custom → Releases</i> on <a href="https://github.com/chaudharysk/orbit">GitHub</a>.</p>
   </div>
 </section>
 
@@ -199,12 +199,12 @@
     <details><summary>Is it safe? What does it access?</summary><p>Orbit runs only on your device and sends nothing anywhere. The code is open on GitHub. On Android it uses an accessibility service to draw the wheel and do what you pick; it reads only the name of the app in front, and the camera's buttons when you use the Camera tool.</p></details>
     <details><summary>Why does Windows warn about the installer?</summary><p>The installer isn't code-signed yet (that costs money every year), so Windows SmartScreen shows a warning for new apps. Choose More info → Run anyway. The source is public if you'd rather build it yourself.</p></details>
     <details><summary>The clicks make a little sound in the buds.</summary><p>That's the buds' own volume tone; apps can't turn it off. Orbit keeps your music level steady while you use tools.</p></details>
-    <details><summary>Something isn't working.</summary><p><a href="https://github.com/harsha20599/orbit/issues/new/choose">Open an issue</a> with your device and the log (Windows: tray icon → Open log; Mac: ~/.orbit/orbit.log; Android: "Copy log" in the app).</p></details>
+    <details><summary>Something isn't working.</summary><p><a href="https://github.com/chaudharysk/orbit/issues/new/choose">Open an issue</a> with your device and the log (Windows: tray icon → Open log; Mac: ~/.orbit/orbit.log; Android: "Copy log" in the app).</p></details>
   </div>
 </section>
 
 <footer>
-  <div class="wrap">Orbit is free and open source (MIT) · <a href="https://github.com/harsha20599/orbit">GitHub</a> · <a href="https://github.com/harsha20599/orbit/issues">Issues</a> · Not affiliated with Nothing or CMF.</div>
+  <div class="wrap">Orbit is free and open source (MIT) · <a href="https://github.com/chaudharysk/orbit">GitHub</a> · <a href="https://github.com/chaudharysk/orbit/issues">Issues</a> · Not affiliated with Nothing or CMF.</div>
 </footer>
 
 <script>
@@ -224,7 +224,7 @@
   })();
   // Point the main button at the visitor's platform.
   (function () {
-    var base = "https://github.com/harsha20599/orbit/releases/latest/download/";
+    var base = "https://github.com/chaudharysk/orbit/releases/latest/download/";
     var ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
     var os = /Android/i.test(ua) ? "android" : /Win/i.test(plat) ? "windows" : /Mac/i.test(plat) && !/iPhone|iPad/.test(ua) ? "mac" : null;
     var files = { windows: ["Orbit-Windows-Setup.exe", "Download for Windows"], mac: ["Orbit-macOS.zip", "Download for Mac"],

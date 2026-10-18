@@ -47,11 +47,28 @@ class Engine(
 
     init { sync() }
 
+    private var active = true
+    val enabled: Boolean get() = active
+
+    fun setEnabled(on: Boolean) {
+        if (enabled == on) return
+        if (!on) {
+            shutdown()
+            state = State.TOOL
+            rotation?.setDuck(null)
+            rotation?.setPassthrough(true)
+        }
+        active = on
+        if (on) { tool.enter(actions); sync() }
+    }
+
     fun handle(ev: DialEvent) {
+        if (!enabled || (ev.kind == Kind.ROTATE && (ev.delta == 0 || ev.delta !in -16..16))) return
         if (state == State.WHEEL) wheelEvent(ev) else toolEvent(ev)
     }
 
     fun tick(now: Long = Clock.now()) {
+        if (!enabled) return
         tool.tick(actions, now)?.let(ui::hud)
         if (state == State.WHEEL && now - wheelLast > dismissAfterMs) {
             if (wheel[index].sticky) commit() else cancel()
@@ -65,6 +82,7 @@ class Engine(
     }
 
     fun openWheel() {
+        if (!enabled) return
         if (state == State.WHEEL) return
         tool.leave(actions)
         state = State.WHEEL
@@ -76,6 +94,7 @@ class Engine(
     }
 
     fun setTool(id: String) {
+        if (!enabled) return
         val t = tools.firstOrNull { it.id == id } ?: return
         tool.leave(actions)
         switchTo(t)

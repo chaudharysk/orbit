@@ -135,8 +135,8 @@ def self_args(argv: list[str]) -> list[str]:
 def parse_args(argv):
     ap = argparse.ArgumentParser(prog="orbit", description="Dial + wheel menu for CMF Buds Pro 2")
     ap.add_argument("--config", help="path to config.toml")
-    ap.add_argument("--no-elevate", action="store_true", help="don't ask for admin (press-and-hold stays off)")
-    ap.add_argument("--dev", action="store_true", help="accept injected events on udp 127.0.0.1:47800")
+    ap.add_argument("--no-elevate", action="store_true", help=argparse.SUPPRESS)
+    ap.add_argument("--dev", action="store_true", help="authenticated source-checkout test input (ORBIT_DEV_TOKEN required)")
     ap.add_argument("--debug", action="store_true")
     ap.add_argument("--autostart", choices=("on", "off"), help="start with Windows (packaged app, set by the installer)")
     return ap.parse_args(argv)
@@ -145,6 +145,17 @@ def parse_args(argv):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     args = parse_args(argv)
+    plat = get_platform()
+    # Refuse before reading user settings or starting input/output services.
+    if sys.platform == "win32" and plat.is_elevated():
+        if sys.stderr:
+            print("Orbit must run without administrator privileges. Launch it normally; reinstall to remove legacy elevated autostart.", file=sys.stderr)
+        return 1
+    if args.dev:
+        if getattr(sys, "frozen", False):
+            raise SystemExit("Developer input is unavailable in packaged builds")
+        from orbit.platform.dev import dev_token
+        dev_token()
     setup_logging(args.debug)
 
     # Already running? Ask it to open Settings and stop here: before the admin prompt,
@@ -152,13 +163,6 @@ def main(argv=None):
     if ping_running("show"):
         log.info("Orbit is already running: opened its Settings")
         return 0
-
-    plat = get_platform()
-    if not plat.is_elevated() and not args.no_elevate:
-        log.info("asking for admin (needed to read press-and-hold)")
-        if plat.relaunch_elevated(self_args(argv)):
-            return 0
-        log.warning("elevation declined — continuing without press-and-hold")
 
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(sys.argv[:1])
@@ -296,8 +300,7 @@ def main(argv=None):
     def restart():
         shutdown()  # release the ETW session + lock before the new instance claims them
         import subprocess
-        extra = [] if plat.is_elevated() or "--no-elevate" in argv else ["--no-elevate"]
-        subprocess.Popen([sys.executable, *self_args([*extra, *argv])],
+        subprocess.Popen([sys.executable, *self_args(argv)],
                          creationflags=0x08000000 if sys.platform == "win32" else 0)
         app.quit()
 
@@ -314,7 +317,7 @@ def main(argv=None):
             toggles.append(a)
     if sys.platform == "win32":
         from orbit.platform.windows import autostart
-        if autostart.available() and plat.is_elevated():
+        if autostart.available():
             if args.autostart:
                 autostart.set_enabled(args.autostart == "on")
             a_auto = QAction("Start with Windows")
@@ -341,17 +344,21 @@ def main(argv=None):
 
     # a second launch (Start menu, desktop shortcut) shows Settings instead of nothing
     server = QLocalServer()
-    server.setSocketOptions(QLocalServer.WorldAccessOption)   # the second launch isn't elevated yet
+    server.setSocketOptions(QLocalServer.UserAccessOption)
+    server.setMaxPendingConnections(4)
     QLocalServer.removeServer(INSTANCE)
 
     def on_ping():
         conn = server.nextPendingConnection()
         if conn is None:
             return
+        conn.setReadBufferSize(32)
+        QTimer.singleShot(1000, conn.disconnectFromServer)
 
         def read():
             if bytes(conn.readAll()).strip() == b"show":
                 open_settings()
+            conn.disconnectFromServer()
         conn.readyRead.connect(read)
         conn.disconnected.connect(conn.deleteLater)
 

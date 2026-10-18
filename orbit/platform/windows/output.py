@@ -191,7 +191,7 @@ class WindowsOutput(Output):
                 subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{app_id}"])
                 log.info("launch %s -> %s", t, app_id)
                 return
-            subprocess.Popen(t, shell=True)                       # last resort: let the shell try
+            log.warning("could not resolve application %r", t)
         except OSError:
             log.exception("could not open '%s'", t)
 
