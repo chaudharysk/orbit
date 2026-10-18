@@ -123,4 +123,26 @@ class VolumeDialTest {
         assertEquals(listOf(1, 1, 1, -1), got)
         assertEquals(25, d.grid)
     }
+
+    private fun streamDial(start: Int): VolumeDial {
+        val d = VolumeDial(object : VolumeDial.Backend {
+            override fun getLevel() = start / 15f
+            override fun setLevel(level: Float) { sets += level }
+        }, { got += it.delta }, streamSteps = 15)
+        d.rebase(); d.setPassthrough(false); d.tick(now); sets.clear()
+        return d
+    }
+
+    @Test fun recenterWalkedStepByStepIsNotTurnedBack() {
+        val d = streamDial(8)
+        for (i in listOf(9, 10, 11)) { now += 300; d.onLevel(i / 15f, false, now) }
+        assertEquals(listOf(1, 1, 1), got)
+        now += VolumeDial.RECENTER_IDLE_MS + 1; d.tick(now)
+        assertEquals(8f / 15, sets.single(), 1e-4f)
+        d.onLevel(8f / 15, true, now)                       // our set
+        for (i in listOf(10, 9, 8, 7)) { now += 60; d.onLevel(i / 15f, false, now) }   // buds walk there, overshoot
+        assertEquals(listOf(1, 1, 1), got)
+        now += 1000; d.onLevel(9 / 15f, false, now)         // later: a real click again
+        assertEquals(listOf(1, 1, 1, 1), got)
+    }
 }

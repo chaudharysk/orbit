@@ -18,6 +18,10 @@ import kotlin.math.roundToInt
  *    a set is fresh, a report is measured from whichever of (ours, theirs) makes it
  *    a whole step. Landing back on their old level is a click from ours.
  *  - recenter targets sit on the grid; at most MAX_CLICKS per report
+ *  - Android: the buds can walk to our level a step at a time (11, 10, 9, 8) or land
+ *    an index or two past it. While our set is fresh, a report on that path is its
+ *    echo, not a click back: otherwise every recenter turned the tool backwards
+ *    (Teleprompter scrolled the script back to where it started).
  *
  * Levels are fractions 0..1 (Android: streamIndex / streamMax). The platform calls
  * [onLevel] for every change and [tick] every ~50 ms; [tick] performs any pending set.
@@ -64,6 +68,7 @@ class VolumeDial(
     private var setAt = 0L
     private var setBefore: Float? = null
     private var setTarget: Float? = null
+    private var setFrom: Float? = null         // level before our set; kept while fresh
 
     @Synchronized fun rebase() {
         level = backend.getLevel(); setBefore = null; setTarget = null; seen.clear()
@@ -100,6 +105,7 @@ class VolumeDial(
             val target = setTarget
             val fresh = target != null && now - setAt < STALE_MS
             if (fresh && abs(newLevel - target!!) < CLICK_MIN * step) { level = newLevel; return }   // echo
+            if (fresh && streamSteps != null && onSetPath(newLevel, target!!)) { level = newLevel; return }
             var d = newLevel - prev
             if (fresh) {
                 val before = setBefore
@@ -140,12 +146,23 @@ class VolumeDial(
             val t = target ?: return
             val before = level
             if (before != null && abs(before - t) < 1e-3f) return
-            setAt = now; setBefore = before; setTarget = t
+            setAt = now; setBefore = before; setTarget = t; setFrom = before
         }
         backend.setLevel(target!!)
     }
 
     private fun grid(): Int = max(grid, 2 * EDGE_STEPS + 3)
+
+    /** Between the level before our set and its target (up to 2 indices past the target,
+     *  one buds step), but clearly off the old level: still our set arriving. */
+    private fun onSetPath(l: Float, target: Float): Boolean {
+        val from = setFrom ?: return false
+        val span = abs(target - from) / step
+        if (span < 1f - CLICK_MIN) return false
+        val dir = if (target > from) 1f else -1f
+        val progress = (l - from) * dir / step
+        return progress > CLICK_MIN && progress <= span + 2.05f
+    }
 
     /** Smallest grid every recent dial report sits on. */
     private fun learnGrid(l: Float) {
