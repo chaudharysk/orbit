@@ -33,8 +33,8 @@ In the **Nothing X** app (on a Nothing phone: Settings → Connected devices →
 | Triple press | Previous track |
 | Press and hold | Voice assistant |
 
-If the wheel never opens, this is almost always why. On Android, Orbit's setup screen has a
-**Dial presses** check that turns green the moment a press arrives.
+If the wheel never opens, this is almost always why. On Android, Help → **Wheel won't open?** in the app
+turns green the moment a press arrives.
 
 ## Using it
 
@@ -49,8 +49,8 @@ If the wheel never opens, this is almost always why. On Android, Orbit's setup s
 Optional tools you can switch on in Settings include **Teleprompter** on Android (turn to move
 the script, press to play / pause, for apps like NEEWER Teleprompter).
 
-Everything is adjustable in **Settings** (tray / menu-bar icon → Settings…, or "Customize" in the
-Android app): which tools are on the wheel and in what order, what each press does (including
+Everything is adjustable in **Settings** (tray / menu-bar icon → Settings…, or the Android app's
+home screen): which tools are on the wheel and in what order, what each press does (including
 "Open an app…"), your own keyboard-shortcut items, scroll speed, light / dark look.
 
 ## Good to know
@@ -85,7 +85,7 @@ Android app): which tools are on the wheel and in what order, what each press do
 
 Found a bug or have an idea? **[Open an issue](https://github.com/harsha20599/orbit/issues/new/choose)**.
 Logs help a lot: tray / menu-bar icon → Open log (Windows `%LOCALAPPDATA%\Orbit\orbit.log`,
-macOS `~/.orbit/orbit.log`); on Android, copy the log from the bottom of the setup screen.
+macOS `~/.orbit/orbit.log`); on Android, Help → **Report a problem** copies the log.
 
 ---
 

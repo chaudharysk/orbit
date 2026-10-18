@@ -6,8 +6,9 @@
 
 **New**
 - **On / off switch everywhere.** Off = the buds work normally (press plays / pauses, the dial changes volume). Windows / Mac: tray menu → Orbit on. Android: the app's switch, Turn off on the notification, or the Orbit Quick Settings tile.
-- **Teleprompter tool (Android, off by default):** turn to move the script, press to play / pause, for apps like NEEWER Teleprompter. Switch it on in Customize.
-- **Dial press check (Android):** the setup screen shows when presses reach Orbit, and how to set the dial gestures in Nothing X when they don't.
+- **Teleprompter tool (Android, off by default):** turn to move the script, press to play / pause, for apps like NEEWER Teleprompter. Switch it on in the app's Wheel items. While it's active, no pop-ups cover the script.
+- **Simpler Android home:** the on/off switch, setup that tucks away into "All set" once done, then your wheel and gestures. Help → "Wheel won't open?" shows when presses reach Orbit and how to set the dial in Nothing X; "Report a problem" copies the log.
+- **Smaller, lower pop-up** on Android when you use a tool, so it covers less of the screen.
 - The tray menu shows whether the buds are connected.
 
 **Important:** Orbit needs the dial set to *single press = Play/Pause, double = Next track, triple = Previous track, hold = Voice assistant* in the Nothing X app.
