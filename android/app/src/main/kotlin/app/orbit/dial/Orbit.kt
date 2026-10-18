@@ -60,7 +60,8 @@ object Orbit {
     // ---- settings
     private const val PREFS = "orbit"
     fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    fun requireBluetooth(ctx: Context) = prefs(ctx).getBoolean("require_bt", true)
+    /** Always on in release; the debug intent extra turns it off for emulator testing. */
+    fun requireBluetooth(ctx: Context) = !BuildConfig.DEBUG || prefs(ctx).getBoolean("require_bt", true)
 
     /** Orbit on/off. Off: no media session, no volume watching, so the buds behave
      *  exactly as without Orbit (presses control music, the dial changes volume). */

@@ -95,7 +95,12 @@ private val APPEARANCES = listOf("Match system" to "system", "Dark" to "dark", "
  *  Every change is saved at once; the accessibility service rebuilds its engine. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomizeScreen(onBack: () -> Unit) {
+fun CustomizeScreen(
+    onBack: (() -> Unit)? = null,
+    title: String = "Customize",
+    top: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {},
+    bottom: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {},
+) {
     val ctx = LocalContext.current
     val all = remember { defaultTools() }
     val byId = remember { all.associateBy { it.id } }
@@ -126,15 +131,18 @@ fun CustomizeScreen(onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
-                title = { Text("Customize") },
+                title = { Text(title, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
-                    IconButton(onBack) { Icon(painterResource(R.drawable.ic_arrow_left), "Back") }
+                    if (onBack != null) IconButton(onBack) { Icon(painterResource(R.drawable.ic_arrow_left), "Back") }
                 },
                 actions = {
-                    TextButton({ SettingsStore.reset(ctx); s = SettingsStore.load(ctx) }) {
-                        Icon(painterResource(R.drawable.ic_rotate_ccw), null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Reset")
+                    var menu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton({ menu = true }) { Icon(painterResource(R.drawable.ic_rotate_ccw), "Reset", Modifier.size(20.dp)) }
+                        DropdownMenu(menu, { menu = false }) {
+                            DropdownMenuItem(text = { Text("Reset wheel and gestures") },
+                                onClick = { menu = false; SettingsStore.reset(ctx); s = SettingsStore.load(ctx) })
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -143,6 +151,7 @@ fun CustomizeScreen(onBack: () -> Unit) {
     ) { pad ->
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = pad.calculateTopPadding(),
             bottom = pad.calculateBottomPadding() + 24.dp)) {
+            top()
             item {
                 WheelPreview(wheel, s.defaultTool, rememberOverlayLook(s.appearance))
                 Text(
@@ -201,13 +210,14 @@ fun CustomizeScreen(onBack: () -> Unit) {
                 }
                 if (opens.isEmpty()) Hint("No gesture opens the wheel, so a triple press will.", warn = true)
             }
+            bottom()
         }
     }
 }
 
 // ---------------------------------------------------------------- pieces
 @Composable
-private fun Section(title: String, sub: String) {
+internal fun Section(title: String, sub: String) {
     Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 28.dp, bottom = 12.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(4.dp))
@@ -216,13 +226,13 @@ private fun Section(title: String, sub: String) {
 }
 
 @Composable
-private fun Group(content: @Composable () -> Unit) {
+internal fun Group(content: @Composable () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()) { Column { content() } }
 }
 
 @Composable
-private fun Hint(text: String, warn: Boolean = false) {
+internal fun Hint(text: String, warn: Boolean = false) {
     Text(text, style = MaterialTheme.typography.bodySmall,
         color = if (warn) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 4.dp, top = 8.dp))

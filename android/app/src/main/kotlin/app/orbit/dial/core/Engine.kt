@@ -94,7 +94,7 @@ class Engine(
             return
         }
         if (ev.kind in openWith) { openWheel(); return }
-        if (tool.gesture(actions, ev.kind)) { ui.hud(tool.hud(actions, 0)); return }
+        if (tool.gesture(actions, ev.kind)) { if (!tool.quietHud) ui.hud(tool.hud(actions, 0)); return }
         when (val g = globalGestures[ev.kind]) {
             is Gesture.Media -> actions.media(g.command)
             is Gesture.Launch -> actions.launch(g.pkg)

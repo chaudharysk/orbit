@@ -59,7 +59,7 @@ class OverlayController(private val svc: AccessibilityService) : Ui {
     private val hideHud = Runnable { state.hudShown = false }
     private val views = listOf(
         add(Gravity.CENTER, 0) { WheelOverlay(state) },
-        add(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, (110 * svc.resources.displayMetrics.density).toInt()) { HudOverlay(state) },
+        add(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, (56 * svc.resources.displayMetrics.density).toInt()) { HudOverlay(state) },
     )
 
     private fun add(gravity: Int, y: Int, content: @androidx.compose.runtime.Composable () -> Unit): ComposeView {

@@ -15,6 +15,8 @@ abstract class Tool(val id: String, val label: String, val icon: String) {
     /** Return true when the tool handled the gesture itself. */
     open fun gesture(a: Actions, kind: Kind): Boolean = false
     open fun hud(a: Actions, direction: Int): Hud = Hud(icon, label, direction = direction)
+    /** No HUD per turn or press (e.g. over a teleprompter script); only when picked. */
+    open val quietHud = false
     open fun fire(a: Actions) {}
 }
 
@@ -62,14 +64,15 @@ class CameraTool : Tool("camera", "Camera", "camera") {
  *  a slow drag (no fling), a press taps the app's play / pause control (found by its
  *  label) or the middle of the screen. Off the wheel until switched on in Customize. */
 class TeleprompterTool : Tool("teleprompter", "Teleprompter", "presentation") {
-    override fun rotate(a: Actions, delta: Int): Hud {
+    override val quietHud = true
+    override fun rotate(a: Actions, delta: Int): Hud? {
         val dir = if (delta > 0) 1 else -1
         repeat(kotlin.math.abs(delta)) { a.nudge(dir) }
-        return Hud(icon, label, if (dir > 0) "script forward" else "script back", null, dir)
+        return null                                   // the script itself is the feedback
     }
     override fun gesture(a: Actions, kind: Kind): Boolean =
         if (kind == Kind.CLICK) { a.tapPlayPause(); true } else false
-    override fun hud(a: Actions, direction: Int) = Hud(icon, label, "turn = move script · press = play / pause", direction = direction)
+    override fun hud(a: Actions, direction: Int) = Hud(icon, label, "turn to scroll · press to play", direction = direction)
 }
 
 class BrightnessTool(private val step: Float = 0.06f, private val maxGain: Float = 3f) :

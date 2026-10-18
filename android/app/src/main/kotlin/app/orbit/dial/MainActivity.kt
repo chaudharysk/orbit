@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -46,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,20 +71,16 @@ val OrbitColors = darkColorScheme(
     outline = Color(0xFF4A5060), outlineVariant = Color(0xFF262A34),
 )
 
-/** Setup checklist (each step re-checked on resume), test buttons, live log. */
+/** The app: Orbit's switch, setup (collapsed when done), the wheel and gestures, help. */
 class MainActivity : ComponentActivity() {
     private var refresh by mutableIntStateOf(0)
-    private var customizing by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyDebugExtras(intent)
         setContent {
             MaterialTheme(colorScheme = OrbitColors) {
-                if (customizing) {
-                    BackHandler { customizing = false }
-                    CustomizeScreen { customizing = false }
-                } else Setup(refresh)
+                Home(refresh)
             }
         }
     }
@@ -91,7 +90,6 @@ class MainActivity : ComponentActivity() {
 
     /** adb shell am start -n app.orbit.dial/.MainActivity --ez require_bt false  (emulator testing) */
     private fun applyDebugExtras(i: Intent) {
-        if (i.getBooleanExtra("customize", false)) customizing = true
         if (i.hasExtra("require_bt")) Orbit.setRequireBluetooth(this, i.getBooleanExtra("require_bt", true))
         i.getStringExtra("emit")?.let { spec ->           // --es emit "rotate:1" | "double" | "click" ...
             val (k, d) = (spec.split(":") + "0").let { it[0] to it[1].toIntOrNull() }
@@ -113,65 +111,43 @@ class MainActivity : ComponentActivity() {
         checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     fun writeOn(): Boolean = Settings.System.canWrite(this)
 
+    private fun copyLog() {
+        val cm = getSystemService(android.content.ClipboardManager::class.java)
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("Orbit log",
+            "Orbit ${BuildConfig.VERSION_NAME} · Android ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}\n" +
+                Orbit.logLines.value.joinToString("\n")))
+        android.widget.Toast.makeText(this, "Log copied: paste it into your GitHub issue", android.widget.Toast.LENGTH_LONG).show()
+    }
+
+    /** Home = Orbit's switch, setup (collapsed once done) and the whole Customize content. */
     @Composable
-    private fun Setup(@Suppress("UNUSED_PARAMETER") tick: Int) {
-        val log by Orbit.logLines.collectAsState()
+    private fun Home(@Suppress("UNUSED_PARAMETER") tick: Int) {
         var disclosure by remember { mutableStateOf(false) }
-        var requireBt by remember { mutableStateOf(Orbit.requireBluetooth(this)) }
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            Column(Modifier.systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Orbit", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-                Text("Turn the CMF Buds Pro 2 dial into a controller. Double-press: wheel. Turn: pick. Press: select.",
-                    color = Color(0xB3FFFFFF), fontSize = 14.sp)
-                Spacer(Modifier.size(4.dp))
-                OnOffRow()
-                PressStep()
-                Step("1", "Notifications", "Shows the 'dial active' notification.", notifOn()) {
-                    if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-                }
-                Step("2", "Accessibility service", "Draws the wheel and performs actions.", a11yOn()) { disclosure = true }
-                Step("3", "Notification access", "Lets a single press still play/pause your music app.", listenerOn()) {
-                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                }
-                Step("4", "Press-and-hold", "Hold opens Claude. Tap, then pick Orbit and 'Always'.", holdIsOurs()) {
-                    startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                }
-                Step("5", "Modify system settings", "Optional: for the Brightness tool.", writeOn()) {
-                    startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
-                }
-                Button({ customizing = true }, Modifier.fillMaxWidth()) { Text("Customize wheel and gestures") }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Only with Bluetooth earbuds", color = Color.White, fontSize = 15.sp)
-                        Text("Off = any volume change counts as the dial (emulator / testing).", color = Color(0x99FFFFFF), fontSize = 12.sp)
+        var gestures by remember { mutableStateOf(false) }
+        CustomizeScreen(
+            title = "Orbit",
+            top = {
+                item { OnOffCard() }
+                item { SetupCard { disclosure = true } }
+            },
+            bottom = {
+                item { Section("Help", "Something not working? These usually sort it out.") }
+                item {
+                    Group {
+                        HelpRow(R.drawable.ic_settings, "Wheel won't open?", "Check the dial's gestures in Nothing X") { gestures = true }
+                        androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        HelpRow(R.drawable.ic_edit, "Report a problem", "Copies the log, then opens GitHub Issues") {
+                            copyLog()
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/harsha20599/orbit/issues/new/choose")))
+                        }
                     }
-                    Switch(requireBt, { requireBt = it; Orbit.setRequireBluetooth(this@MainActivity, it) })
+                    Text("Orbit ${BuildConfig.VERSION_NAME} · free and open source", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(top = 18.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
-                Text("Try it without the buds", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Double" to DialEvent(Kind.DOUBLE), "◀" to DialEvent(Kind.ROTATE, -1),
-                        "▶" to DialEvent(Kind.ROTATE, 1), "Press" to DialEvent(Kind.CLICK)).forEach { (l, e) ->
-                        OutlinedButton({ Orbit.emit(e.copy(source = "test")) }) { Text(l) }
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Log", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    TextButton({
-                        val cm = getSystemService(android.content.ClipboardManager::class.java)
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("Orbit log",
-                            "Orbit ${BuildConfig.VERSION_NAME} · Android ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}\n" +
-                                Orbit.logLines.value.joinToString("\n")))
-                        android.widget.Toast.makeText(this@MainActivity, "Log copied", android.widget.Toast.LENGTH_SHORT).show()
-                    }) { Text("Copy log") }
-                }
-                Column(Modifier.fillMaxWidth().background(Color(0xFF16181D), RoundedCornerShape(10.dp)).padding(10.dp)) {
-                    (if (log.isEmpty()) listOf("(nothing yet)") else log.takeLast(18)).forEach {
-                        Text(it, color = Color(0xCCFFFFFF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
-                    }
-                }
-            }
-        }
+            },
+        )
+        if (gestures) GesturesDialog { gestures = false }
         if (disclosure) AlertDialog(
             onDismissRequest = { disclosure = false },
             title = { Text("Accessibility permission") },
@@ -182,59 +158,126 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /** The master switch: off = the buds behave as if Orbit weren't installed. */
+    private class SetupStep(val title: String, val sub: String, val done: Boolean, val optional: Boolean = false,
+                            val action: () -> Unit)
+
+    /** The master switch, as the first thing on the page. */
     @Composable
-    private fun OnOffRow() {
+    private fun OnOffCard() {
         var on by remember { mutableStateOf(Orbit.enabled(this)) }
-        Row(Modifier.fillMaxWidth().background(Color(0xFF16181D), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(if (on) "Orbit is on" else "Orbit is off", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (on) "The dial drives Orbit. Turn off to use the buds normally." else
-                    "The buds work normally: press = play/pause, dial = volume.", color = Color(0x99FFFFFF), fontSize = 12.sp)
+        val bg by androidx.compose.animation.animateColorAsState(
+            if (on) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, label = "onBg")
+        androidx.compose.material3.Surface(color = bg, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Row(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (on) "Orbit is on" else "Orbit is off", style = MaterialTheme.typography.titleLarge,
+                        color = if (on) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)
+                    Text(if (on) "Double-press the dial to open the wheel." else "The buds work normally: press plays, the dial sets volume.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (on) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(on, { on = it; Orbit.setEnabled(this@MainActivity, it) })
             }
-            Switch(on, { on = it; Orbit.setEnabled(this@MainActivity, it) })
         }
     }
 
-    /** Live check that the dial's presses reach Orbit; with the fix when they don't. */
+    /** Setup: every step while something's missing; one quiet line once it's all done. */
     @Composable
-    private fun PressStep() {
-        var seen by remember { mutableStateOf(Orbit.lastPress > 0) }
-        var help by remember { mutableStateOf(false) }
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            while (!seen) { kotlinx.coroutines.delay(400); seen = Orbit.lastPress > 0 }
+    private fun SetupCard(onA11y: () -> Unit) {
+        @Suppress("UNUSED_VARIABLE") val tick = refresh     // re-check every step on resume
+        val steps = listOf(
+            SetupStep("Accessibility service", "Draws the wheel and performs actions.", a11yOn(), action = onA11y),
+            SetupStep("Notifications", "Shows that Orbit is on, with a Turn off button.", notifOn()) {
+                if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            },
+            SetupStep("Notification access", "Lets a single press still play / pause your music.", listenerOn()) {
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            },
+            SetupStep("Press-and-hold", "Hold opens Claude: tap, then pick Orbit and Always.", holdIsOurs()) {
+                startActivity(Intent(Intent.ACTION_VOICE_COMMAND).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            },
+            SetupStep("Modify system settings", "Optional: for the Brightness tool.", writeOn(), optional = true) {
+                startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+            },
+        )
+        val missing = steps.count { !it.done && !it.optional }
+        var open by remember(missing) { mutableStateOf(missing > 0) }
+        Column(Modifier.padding(top = 12.dp)) {
+            Group {
+                androidx.compose.material3.ListItem(
+                    colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.fillMaxWidth().clickable { open = !open },
+                    leadingContent = { StatusDot(missing == 0) },
+                    headlineContent = { Text(if (missing == 0) "All set" else "Finish setting up",
+                        fontWeight = FontWeight.Medium) },
+                    supportingContent = { Text(if (missing == 0) "Permissions granted" else "$missing step${if (missing == 1) "" else "s"} left",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingContent = { Icon(painterResource(if (open) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down), null,
+                        Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                )
+                androidx.compose.animation.AnimatedVisibility(open) {
+                    Column {
+                        steps.forEach { st ->
+                            androidx.compose.material3.HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            androidx.compose.material3.ListItem(
+                                colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+                                leadingContent = { StatusDot(st.done, small = true) },
+                                headlineContent = { Text(st.title) },
+                                supportingContent = { Text(st.sub, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                trailingContent = { if (!st.done) androidx.compose.material3.FilledTonalButton(st.action) { Text("Set up") } },
+                            )
+                        }
+                    }
+                }
+            }
         }
-        Step("✓", "Dial presses reach Orbit",
-            if (seen) "Press detected. Double-press opens the wheel." else
-                "Press the dial once now. Nothing happens? Tap Fix: the buds' dial gestures need setting.", seen) { help = true }
-        if (help) AlertDialog(
-            onDismissRequest = { help = false },
-            title = { Text("Set the dial gestures") },
-            text = { Text("Orbit reads the dial through the buds' music controls, so the dial must send them.\n\n" +
-                "Open the Nothing X app (on Nothing phones: Settings → Connected devices → CMF Buds Pro 2) → Controls → Dial, and set:\n" +
-                "• Single press: Play / Pause\n• Double press: Next track\n• Triple press: Previous track\n• Press and hold: Voice assistant\n\n" +
-                "Then come back and press the dial once.") },
-            confirmButton = { Button({
-                help = false
-                val nx = packageManager.getLaunchIntentForPackage("com.nothing.smartcenter")
-                startActivity(nx ?: Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-            }) { Text("Open buds settings") } },
-            dismissButton = { TextButton({ help = false }) { Text("Close") } },
+    }
+
+    @Composable
+    private fun StatusDot(done: Boolean, small: Boolean = false) {
+        val size = if (small) 22.dp else 28.dp
+        Box(Modifier.size(size).background(if (done) Color(0xFF3DDC97) else MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+            contentAlignment = Alignment.Center) {
+            if (done) Text("✓", color = Color(0xFF0B1A12), fontWeight = FontWeight.Bold, fontSize = if (small) 12.sp else 14.sp)
+        }
+    }
+
+    @Composable
+    private fun HelpRow(icon: Int, title: String, sub: String, onClick: () -> Unit) {
+        androidx.compose.material3.ListItem(
+            colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+            leadingContent = { Icon(painterResource(icon), null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
+            supportingContent = { Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant) },
         )
     }
 
+    /** "Wheel won't open?": the press test plus the Nothing X gesture fix. */
     @Composable
-    private fun Step(n: String, title: String, sub: String, done: Boolean, action: () -> Unit) {
-        Row(Modifier.fillMaxWidth().background(Color(0xFF16181D), RoundedCornerShape(14.dp)).padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(28.dp).background(if (done) Color(0xFF3DDC97) else Color(0x33FFFFFF), CircleShape),
-                contentAlignment = Alignment.Center) { Text(if (done) "✓" else n, color = Color.Black, fontWeight = FontWeight.Bold) }
-            Column(Modifier.weight(1f)) {
-                Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                Text(sub, color = Color(0x99FFFFFF), fontSize = 12.sp)
-            }
-            if (!done) Button(action, colors = ButtonDefaults.buttonColors()) { Text(if (n == "✓") "Fix" else "Set up") }
+    private fun GesturesDialog(onDismiss: () -> Unit) {
+        var seen by remember { mutableStateOf(false) }
+        val since = remember { Orbit.lastPress }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            while (!seen) { kotlinx.coroutines.delay(300); seen = Orbit.lastPress > since }
         }
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(if (seen) "Presses reach Orbit ✓" else "Press the dial once") },
+            text = { Text(if (seen) "Orbit hears the dial. Double-press opens the wheel." else
+                "If nothing changes here when you press, the dial isn't sending its music controls. " +
+                "In the Nothing X app (on Nothing phones: Settings → Connected devices → CMF Buds Pro 2) → Controls → Dial, set:\n\n" +
+                "• Single press: Play / Pause\n• Double press: Next track\n• Triple press: Previous track\n• Press and hold: Voice assistant") },
+            confirmButton = {
+                if (seen) Button(onDismiss) { Text("Done") }
+                else Button({
+                    onDismiss()
+                    val nx = packageManager.getLaunchIntentForPackage("com.nothing.smartcenter")
+                    startActivity(nx ?: Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                }) { Text("Open buds settings") }
+            },
+            dismissButton = { if (!seen) TextButton(onDismiss) { Text("Close") } },
+        )
     }
+
 }

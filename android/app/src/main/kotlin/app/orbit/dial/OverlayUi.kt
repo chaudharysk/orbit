@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -308,17 +309,19 @@ private fun HudPill(h: app.orbit.dial.core.Hud, a: Float, lift: Float, nudge: Fl
         Modifier.graphicsLayer { alpha = a; translationY = lift * density }
             .shadow(10.dp, RoundedCornerShape(50)).background(Glass, RoundedCornerShape(50))
             .border(1.dp, LocalOverlayLook.current.edge, RoundedCornerShape(50))
-            .padding(start = 10.dp, end = 18.dp, top = 9.dp, bottom = 9.dp),
+            .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp)
+            .widthIn(max = 340.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(Modifier.size(34.dp).background(Accent.copy(alpha = 0.18f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(painterResource(orbitIcon(h.icon)), h.title, Modifier.size(17.dp).graphicsLayer { rotationZ = nudge }, tint = Accent)
+        Box(Modifier.size(28.dp).background(Accent.copy(alpha = 0.18f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(painterResource(orbitIcon(h.icon)), h.title, Modifier.size(15.dp).graphicsLayer { rotationZ = nudge }, tint = Accent)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(h.title, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                if (h.detail.isNotEmpty()) Text(h.detail, color = InkDim, fontSize = 15.sp)
+                Text(h.title, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                if (h.detail.isNotEmpty()) Text(h.detail, color = InkDim, fontSize = 13.sp, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
             h.progress?.let { p ->
                 val pw by animateFloatAsState(p.coerceIn(0f, 1f), spring(0.6f, Spring.StiffnessMedium), label = "hudP")
