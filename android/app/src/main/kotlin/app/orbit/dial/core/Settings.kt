@@ -21,7 +21,7 @@ data class OrbitSettings(
         val GESTURES = listOf(Kind.CLICK, Kind.DOUBLE, Kind.TRIPLE, Kind.HOLD)
         const val OPEN_WHEEL = "open_wheel"
         /** On the list (switch them on in Customize), off the wheel until then. */
-        val HIDDEN_BY_DEFAULT = setOf("zoom", "claude")
+        val HIDDEN_BY_DEFAULT = setOf("zoom", "claude", "teleprompter")
         val APPEARANCES = listOf("system", "dark", "light")
 
         fun defaults(tools: List<Tool>) = OrbitSettings(

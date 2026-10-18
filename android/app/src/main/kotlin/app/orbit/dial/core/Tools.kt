@@ -58,6 +58,20 @@ class CameraTool : Tool("camera", "Camera", "camera") {
     override fun hud(a: Actions, direction: Int) = Hud(icon, label, "press = shutter", direction = direction)
 }
 
+/** Teleprompter apps (e.g. NEEWER Teleprompter): turning nudges the script up / down with
+ *  a slow drag (no fling), a press taps the app's play / pause control (found by its
+ *  label) or the middle of the screen. Off the wheel until switched on in Customize. */
+class TeleprompterTool : Tool("teleprompter", "Teleprompter", "presentation") {
+    override fun rotate(a: Actions, delta: Int): Hud {
+        val dir = if (delta > 0) 1 else -1
+        repeat(kotlin.math.abs(delta)) { a.nudge(dir) }
+        return Hud(icon, label, if (dir > 0) "script forward" else "script back", null, dir)
+    }
+    override fun gesture(a: Actions, kind: Kind): Boolean =
+        if (kind == Kind.CLICK) { a.tapPlayPause(); true } else false
+    override fun hud(a: Actions, direction: Int) = Hud(icon, label, "turn = move script · press = play / pause", direction = direction)
+}
+
 class BrightnessTool(private val step: Float = 0.06f, private val maxGain: Float = 3f) :
     Tool("brightness", "Brightness", "brightness") {
     private val spin = SpinTracker()
@@ -158,6 +172,7 @@ fun defaultTools(): List<Tool> = listOf(
     ZoomTool(),
     TorchTool(),
     CameraTool(),
+    TeleprompterTool(),
     ActionItem("screenshot", "Screenshot", "camera") { it.global("screenshot") },
     ActionItem("claude", "Claude", "claude") { it.launch("com.anthropic.claude") },
 )

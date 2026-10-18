@@ -21,7 +21,11 @@ object Orbit {
     private val _events = MutableSharedFlow<DialEvent>(extraBufferCapacity = 64)
     val events: SharedFlow<DialEvent> = _events
 
+    /** When the last dial press arrived (0 = none yet): the setup screen's press test. */
+    @Volatile var lastPress = 0L
+
     fun emit(ev: DialEvent) {
+        if (ev.kind != app.orbit.dial.core.Kind.ROTATE && ev.source == "media-session") lastPress = Clock.now()
         log("in  ${ev.kind}${if (ev.delta != 0) " ${ev.delta}" else ""} <${ev.source}>")
         _events.tryEmit(ev)
     }
@@ -57,5 +61,18 @@ object Orbit {
     private const val PREFS = "orbit"
     fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     fun requireBluetooth(ctx: Context) = prefs(ctx).getBoolean("require_bt", true)
+
+    /** Orbit on/off. Off: no media session, no volume watching, so the buds behave
+     *  exactly as without Orbit (presses control music, the dial changes volume). */
+    fun enabled(ctx: Context) = prefs(ctx).getBoolean("enabled", true)
+    fun setEnabled(ctx: Context, on: Boolean) {
+        prefs(ctx).edit().putBoolean("enabled", on).apply()
+        if (on) OrbitMediaService.start(ctx) else OrbitMediaService.stop(ctx)
+        log(if (on) "Orbit turned on" else "Orbit turned off")
+        runCatching {
+            android.service.quicksettings.TileService.requestListeningState(ctx,
+                android.content.ComponentName(ctx, OrbitTileService::class.java))
+        }
+    }
     fun setRequireBluetooth(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("require_bt", on).apply()
 }

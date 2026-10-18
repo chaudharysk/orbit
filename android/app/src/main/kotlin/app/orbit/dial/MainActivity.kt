@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); applyDebugExtras(intent) }
-    override fun onResume() { super.onResume(); refresh++ ; if (a11yOn()) OrbitMediaService.start(this) }
+    override fun onResume() { super.onResume(); refresh++ ; if (a11yOn()) OrbitMediaService.start(this) }   // start() is a no-op when Orbit is off
 
     /** adb shell am start -n app.orbit.dial/.MainActivity --ez require_bt false  (emulator testing) */
     private fun applyDebugExtras(i: Intent) {
@@ -125,6 +125,8 @@ class MainActivity : ComponentActivity() {
                 Text("Turn the CMF Buds Pro 2 dial into a controller. Double-press: wheel. Turn: pick. Press: select.",
                     color = Color(0xB3FFFFFF), fontSize = 14.sp)
                 Spacer(Modifier.size(4.dp))
+                OnOffRow()
+                PressStep()
                 Step("1", "Notifications", "Shows the 'dial active' notification.", notifOn()) {
                     if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
                 }
@@ -180,6 +182,48 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    /** The master switch: off = the buds behave as if Orbit weren't installed. */
+    @Composable
+    private fun OnOffRow() {
+        var on by remember { mutableStateOf(Orbit.enabled(this)) }
+        Row(Modifier.fillMaxWidth().background(Color(0xFF16181D), RoundedCornerShape(14.dp)).padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(if (on) "Orbit is on" else "Orbit is off", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (on) "The dial drives Orbit. Turn off to use the buds normally." else
+                    "The buds work normally: press = play/pause, dial = volume.", color = Color(0x99FFFFFF), fontSize = 12.sp)
+            }
+            Switch(on, { on = it; Orbit.setEnabled(this@MainActivity, it) })
+        }
+    }
+
+    /** Live check that the dial's presses reach Orbit; with the fix when they don't. */
+    @Composable
+    private fun PressStep() {
+        var seen by remember { mutableStateOf(Orbit.lastPress > 0) }
+        var help by remember { mutableStateOf(false) }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            while (!seen) { kotlinx.coroutines.delay(400); seen = Orbit.lastPress > 0 }
+        }
+        Step("✓", "Dial presses reach Orbit",
+            if (seen) "Press detected. Double-press opens the wheel." else
+                "Press the dial once now. Nothing happens? Tap Fix: the buds' dial gestures need setting.", seen) { help = true }
+        if (help) AlertDialog(
+            onDismissRequest = { help = false },
+            title = { Text("Set the dial gestures") },
+            text = { Text("Orbit reads the dial through the buds' music controls, so the dial must send them.\n\n" +
+                "Open the Nothing X app (on Nothing phones: Settings → Connected devices → CMF Buds Pro 2) → Controls → Dial, and set:\n" +
+                "• Single press: Play / Pause\n• Double press: Next track\n• Triple press: Previous track\n• Press and hold: Voice assistant\n\n" +
+                "Then come back and press the dial once.") },
+            confirmButton = { Button({
+                help = false
+                val nx = packageManager.getLaunchIntentForPackage("com.nothing.smartcenter")
+                startActivity(nx ?: Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+            }) { Text("Open buds settings") } },
+            dismissButton = { TextButton({ help = false }) { Text("Close") } },
+        )
+    }
+
     @Composable
     private fun Step(n: String, title: String, sub: String, done: Boolean, action: () -> Unit) {
         Row(Modifier.fillMaxWidth().background(Color(0xFF16181D), RoundedCornerShape(14.dp)).padding(14.dp),
@@ -190,7 +234,7 @@ class MainActivity : ComponentActivity() {
                 Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 Text(sub, color = Color(0x99FFFFFF), fontSize = 12.sp)
             }
-            if (!done) Button(action, colors = ButtonDefaults.buttonColors()) { Text("Set up") }
+            if (!done) Button(action, colors = ButtonDefaults.buttonColors()) { Text(if (n == "✓") "Fix" else "Set up") }
         }
     }
 }

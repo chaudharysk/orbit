@@ -9,8 +9,8 @@ class SettingsTest {
     private val all = defaultTools()
     private val d = OrbitSettings.defaults(all)
 
-    @Test fun defaultsPutEveryToolButZoomAndClaudeOnTheWheel() {
-        assertEquals(all.map { it.id } - setOf("zoom", "claude"), d.wheel(all).map { it.id })
+    @Test fun defaultsPutEveryToolButTheOptionalOnesOnTheWheel() {
+        assertEquals(all.map { it.id } - setOf("zoom", "claude", "teleprompter"), d.wheel(all).map { it.id })
         assertEquals(setOf(Kind.DOUBLE), d.openWith())
     }
 
@@ -69,5 +69,7 @@ class SettingsTest {
         override fun volume() = 0.5f
         override fun haptic() {}
         override fun shutter() {}
+        override fun nudge(direction: Int) {}
+        override fun tapPlayPause() {}
     }
 }

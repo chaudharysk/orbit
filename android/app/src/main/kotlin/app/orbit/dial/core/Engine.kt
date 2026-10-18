@@ -213,6 +213,10 @@ interface Actions {
     fun haptic()
     /** Take a photo: press the camera app's shutter, or open the camera if it isn't in front. */
     fun shutter()
+    /** A short slow drag (no fling): +1 moves content up (forward), -1 back. */
+    fun nudge(direction: Int)
+    /** Press the front app's play / pause control (by label), else tap the screen centre. */
+    fun tapPlayPause()
 }
 
 data class App(val pkg: String, val label: String)

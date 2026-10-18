@@ -12,7 +12,8 @@ import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QLockFile, QObject, QTimer, Qt, Signal
+from PySide6.QtCore import QLockFile, QObject, QPointF, QTimer, Qt, Signal
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtGui import QAction, QColor, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -68,26 +69,61 @@ def app_icon() -> QIcon:
     return QIcon(str(ICONS / "orbit.png"))
 
 
-def tray_icon(accent: str) -> QIcon:
-    """macOS: a template the menu bar tints for light / dark. Elsewhere: the app icon."""
+def light_taskbar() -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg
+        k = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        return bool(winreg.QueryValueEx(k, "SystemUsesLightTheme")[0])
+    except OSError:
+        return False
+
+
+def tray_icon(accent: str, on: bool = True) -> QIcon:
+    """The Orbit mark as a tray glyph: a ring with the lit item. macOS gets a template the
+    menu bar tints; Windows a ring that contrasts with the taskbar (the full app icon is
+    a dark tile that vanished on a dark taskbar, issue #2). Off = hollow, grey."""
     if sys.platform == "darwin" and (ICONS / "orbit_tray.png").exists():
         icon = QIcon(str(ICONS / "orbit_tray.png"))
         icon.setIsMask(True)
         return icon
-    if (ICONS / "orbit.png").exists():
-        return app_icon()
-    pm = QPixmap(64, 64)                     # fallback: the old drawn ring
-    pm.fill(Qt.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setPen(Qt.NoPen)
-    p.setBrush(QColor("#15171c"))
-    p.drawEllipse(2, 2, 60, 60)
-    p.setBrush(Qt.NoBrush)
-    p.setPen(QPen(QColor(accent), 6, Qt.SolidLine, Qt.RoundCap))
-    p.drawArc(12, 12, 40, 40, 60 * 16, 300 * 16)
-    p.end()
-    return QIcon(pm)
+    ink = QColor("#1B1E26") if light_taskbar() else QColor("#F4F6FB")
+    dot = QColor(accent) if on else QColor("#8A8F9C")
+    if not on:
+        ink.setAlpha(150)
+    icon = QIcon()
+    for size in (16, 20, 24, 32, 48, 64):
+        pm = QPixmap(size, size)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        s = size / 32
+        p.setPen(QPen(ink, 3.0 * s))
+        p.setBrush(Qt.NoBrush)
+        p.drawEllipse(QPointF(16 * s, 16 * s), 12.2 * s, 12.2 * s)
+        p.setPen(Qt.NoPen)
+        p.setBrush(dot)
+        p.drawEllipse(QPointF(16 * s + 7.2 * s * 0.643, 16 * s - 7.2 * s * 0.766), 4.4 * s, 4.4 * s)
+        p.end()
+        icon.addPixmap(pm)
+    return icon
+
+
+INSTANCE = f"orbit-{os.environ.get('USERNAME') or os.environ.get('USER') or 'user'}"
+
+
+def ping_running(msg: str) -> bool:
+    """Send `msg` to a running Orbit; True if one answered."""
+    sock = QLocalSocket()
+    sock.connectToServer(INSTANCE)
+    if not sock.waitForConnected(400):
+        return False
+    sock.write(msg.encode())
+    sock.flush()
+    sock.waitForBytesWritten(400)
+    sock.disconnectFromServer()
+    return True
 
 
 def self_args(argv: list[str]) -> list[str]:
@@ -111,6 +147,12 @@ def main(argv=None):
     args = parse_args(argv)
     setup_logging(args.debug)
 
+    # Already running? Ask it to open Settings and stop here: before the admin prompt,
+    # so a second click on Orbit never asks for admin just to say "already running".
+    if ping_running("show"):
+        log.info("Orbit is already running: opened its Settings")
+        return 0
+
     plat = get_platform()
     if not plat.is_elevated() and not args.no_elevate:
         log.info("asking for admin (needed to read press-and-hold)")
@@ -127,8 +169,9 @@ def main(argv=None):
     lock = QLockFile(str(data_dir() / "orbit.lock"))
     lock.setStaleLockTime(0)
     if not lock.tryLock(100):
-        log.error("Orbit is already running")
-        return 1
+        ping_running("show")
+        log.info("Orbit is already running: opened its Settings")
+        return 0
 
     cfg, cfg_path = config_mod.load(args.config, user_settings=user_settings.load())
     log.info("config: %s (+ %s)", cfg_path, user_settings.path())
@@ -173,9 +216,36 @@ def main(argv=None):
     ticker.start()
 
     # ---- tray
+    off_flag = data_dir() / "off"
     tray = QSystemTrayIcon(tray_icon(cfg["ui"]["accent"]))
-    tray.setToolTip("Orbit — hold the dial to open the wheel")
+    tray.setToolTip("Orbit: double-press the dial to open the wheel")
     menu = QMenu()
+    a_status = QAction("")
+    a_status.setEnabled(False)
+    a_on = QAction("Orbit on")
+    a_on.setCheckable(True)
+
+    def set_on(on: bool):
+        live["engine"].set_paused(not on)
+        try:
+            off_flag.unlink() if on else off_flag.write_text("off")
+        except OSError:
+            pass
+        tray.setIcon(tray_icon(cfg["ui"]["accent"], on))
+        tray.setToolTip("Orbit is on: double-press the dial to open the wheel" if on else
+                        "Orbit is off: the buds work normally")
+        if a_on.isChecked() != on:
+            a_on.setChecked(on)
+
+    a_on.toggled.connect(set_on)
+
+    def refresh_status():
+        rot = [s for s in sources if hasattr(s, "level")]
+        bound = bool(rot) and "no device" not in rot[0].describe()
+        match = cfg["device"].get("audio_endpoint_match", "CMF Buds Pro 2")
+        a_status.setText("Buds connected" if bound else f"Buds not connected (looking for '{match}')")
+
+    menu.aboutToShow.connect(refresh_status)
     a_cfg = QAction("Open config")              # your overrides (a short stub on first open)
     a_cfg.triggered.connect(lambda: out.launch(str(config_mod.find(args.config))))
     a_log = QAction("Open log")
@@ -195,7 +265,9 @@ def main(argv=None):
             ui.wheel_cancel()
         old.shutdown()
         ui.bridge.set_appearance(cfg2["ui"]["appearance"])
+        paused = old.paused
         live["engine"] = Engine(cfg2, out, ui, sources)
+        live["engine"].set_paused(paused)
         log.info("settings applied — wheel: %s, start: %s, wheel opens with: %s",
                  live["engine"].wheel_ids, live["engine"].tool.id, sorted(live["engine"].open_with))
 
@@ -251,7 +323,10 @@ def main(argv=None):
             a_auto.toggled.connect(lambda on: autostart.set_enabled(on) or a_auto.setChecked(autostart.enabled()))
             toggles.append(a_auto)
 
-    for a in (a_wheel, a_settings, a_cfg, a_log, a_restart):
+    menu.addAction(a_status)
+    menu.addAction(a_on)
+    menu.addSeparator()
+    for a in (a_settings, a_wheel, a_cfg, a_log, a_restart):
         menu.addAction(a)
     menu.addSeparator()
     for a in toggles:
@@ -259,7 +334,44 @@ def main(argv=None):
     menu.addSeparator()
     menu.addAction(a_quit)
     tray.setContextMenu(menu)
+    tray.activated.connect(lambda reason: open_settings() if reason == QSystemTrayIcon.Trigger else None)
     tray.show()
+    a_on.setChecked(not off_flag.exists())
+    set_on(not off_flag.exists())
+
+    # a second launch (Start menu, desktop shortcut) shows Settings instead of nothing
+    server = QLocalServer()
+    server.setSocketOptions(QLocalServer.WorldAccessOption)   # the second launch isn't elevated yet
+    QLocalServer.removeServer(INSTANCE)
+
+    def on_ping():
+        conn = server.nextPendingConnection()
+        if conn is None:
+            return
+
+        def read():
+            if bytes(conn.readAll()).strip() == b"show":
+                open_settings()
+        conn.readyRead.connect(read)
+        conn.disconnected.connect(conn.deleteLater)
+
+    server.newConnection.connect(on_ping)
+    if not server.listen(INSTANCE):
+        log.warning("single-instance channel unavailable: %s", server.errorString())
+
+    # first run: say where Orbit lives, and open Settings so there's something to see
+    welcomed = data_dir() / "welcomed"
+    if not welcomed.exists():
+        where = "in the system tray (click ^ by the clock if you don't see it)" if sys.platform == "win32" \
+            else "in the menu bar"
+        QTimer.singleShot(1500, lambda: tray.showMessage(
+            "Orbit is running", f"It lives {where}. Double-press the dial to open the wheel.",
+            app_icon(), 8000))
+        QTimer.singleShot(1800, open_settings)
+        try:
+            welcomed.write_text("1")
+        except OSError:
+            pass
 
     done = []
 

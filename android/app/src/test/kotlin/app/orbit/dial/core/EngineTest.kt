@@ -33,6 +33,8 @@ class EngineTest {
         override fun volume() = 0.5f
         override fun haptic() {}
         override fun shutter() { log += "shutter" }
+        override fun nudge(direction: Int) { log += "nudge:$direction" }
+        override fun tapPlayPause() { log += "tap" }
     }
     private val ui = object : Ui {
         override fun wheelOpen(items: List<Tool>, index: Int) { log += "ui:open:$index" }
@@ -154,6 +156,15 @@ class EngineTest {
         assertTrue(huds.last().strip!!.opened)
         e.tick(now + 2000)
         assertEquals(1, log.count { it.startsWith("open:") })     // no second open
+    }
+
+    @Test fun teleprompterNudgesPerClickAndPressTapsPlayPause() {
+        val e = engine()
+        e.setTool("teleprompter")
+        e.ev(Kind.ROTATE, 1); e.ev(Kind.ROTATE, -1)
+        e.ev(Kind.CLICK)
+        assertEquals(listOf("nudge:1", "nudge:-1", "tap"), log.filter { it.startsWith("nudge") || it == "tap" })
+        assertTrue(log.none { it.startsWith("media:") })
     }
 
     @Test fun cameraPressIsTheShutterAndTurningDoesNothing() {

@@ -66,15 +66,17 @@ class OrbitMediaService : Service() {
     private val volumeRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             if (i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != stream) return
-            val idx = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
-            if (idx >= 0) onIndex(idx)
+            // Don't trust EXTRA_VOLUME_STREAM_VALUE: Nothing OS reports it x10 (100/16 for
+            // 10/16, issue #1), which read as phantom clicks. Read the real index instead.
+            onIndex(am.getStreamVolume(stream))
         }
     }
 
     private fun onIndex(idx: Int) {
+        val max = am.getStreamMaxVolume(stream).coerceAtLeast(1)
+        if (idx < 0 || idx > max) return                    // impossible reading: never a click
         if (idx == lastIdx) return
         lastIdx = idx
-        val max = am.getStreamMaxVolume(stream).coerceAtLeast(1)
         val o = ourSet
         val ours = o != null && o.first == idx && Clock.now() - o.second < 700
         Orbit.log("vol $idx/$max${if (ours) " (ours)" else ""}")
@@ -141,9 +143,16 @@ class OrbitMediaService : Service() {
                         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> Kind.TRIPLE
                         else -> return false
                     }
-                    Orbit.emit(DialEvent(kind, 0, "media-session"))
+                    press(kind, "key ${ev.keyCode}")
                     return true            // swallow; we never leave PLAYING
                 }
+                // Some phones (seen on Android 16) hand the buds' AVRCP presses to the
+                // session as transport controls instead of media keys.
+                override fun onPlay() = press(Kind.CLICK, "play")
+                override fun onPause() = press(Kind.CLICK, "pause")
+                override fun onStop() = press(Kind.CLICK, "stop")
+                override fun onSkipToNext() = press(Kind.DOUBLE, "next")
+                override fun onSkipToPrevious() = press(Kind.TRIPLE, "previous")
             }, main)
             setPlaybackState(PlaybackState.Builder()
                 .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or
@@ -156,6 +165,18 @@ class OrbitMediaService : Service() {
             setMediaButtonReceiver(null)
             isActive = true
         }
+    }
+
+    private var lastPressAt = 0L
+    private var lastPressKind: Kind? = null
+
+    /** One press, however it arrived; a key and its transport-control twin count once. */
+    private fun press(kind: Kind, how: String) {
+        val now = Clock.now()
+        if (kind == lastPressKind && now - lastPressAt < 150) return
+        lastPressAt = now; lastPressKind = kind
+        Orbit.log("press: $how")
+        Orbit.emit(DialEvent(kind, 0, "media-session"))
     }
 
     private fun startSilence() {
@@ -208,11 +229,14 @@ class OrbitMediaService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE)
         val n = Notification.Builder(this, "dial")
-            .setContentTitle("Orbit dial active")
+            .setContentTitle("Orbit is on")
             .setContentText("Double-press the dial to open the wheel")
             .setSmallIcon(R.drawable.ic_settings)
             .setContentIntent(open)
             .setOngoing(true)
+            .addAction(Notification.Action.Builder(null, "Turn off",
+                PendingIntent.getBroadcast(this, 1, Intent(this, OrbitToggleReceiver::class.java)
+                    .setAction(OrbitToggleReceiver.OFF), PendingIntent.FLAG_IMMUTABLE)).build())
             .build()
         if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         else startForeground(1, n)
@@ -220,8 +244,13 @@ class OrbitMediaService : Service() {
 
     companion object {
         fun start(ctx: Context) {
+            if (!Orbit.enabled(ctx)) return
             runCatching { ContextCompat.startForegroundService(ctx, Intent(ctx, OrbitMediaService::class.java)) }
                 .onFailure { Orbit.log("media service start refused: ${it.message}") }
+        }
+
+        fun stop(ctx: Context) {
+            ctx.stopService(Intent(ctx, OrbitMediaService::class.java))
         }
     }
 }

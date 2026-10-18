@@ -91,8 +91,32 @@ class Engine:
         self._sync_passthrough()
 
     # ------------------------------------------------------------------ public
+    # ------------------------------------------------------------------ on / off
+    paused = False
+
+    def set_paused(self, on: bool) -> None:
+        """Off: Orbit steps aside. The dial changes volume, presses go to the music
+        player as they would without Orbit; the wheel closes and the tool lets go."""
+        if on == self.paused:
+            return
+        if on:
+            if self.state == State.WHEEL:
+                self._cancel()
+            self.tool.leave(self)
+        self.paused = on
+        if not on:
+            self.tool.enter(self)
+        self._sync_passthrough()
+        log.info("Orbit %s", "off" if on else "on")
+
+    _NATIVE = {Kind.CLICK: "play_pause", Kind.DOUBLE: "next", Kind.TRIPLE: "previous"}
+
     def handle(self, ev: InputEvent) -> None:
-        log.debug("%s  [%s/%s]", ev, self.state.value, self.tool.id)
+        log.debug("%s  [%s/%s]", ev, "off" if self.paused else self.state.value, self.tool.id)
+        if self.paused:
+            if ev.kind in self._NATIVE:
+                self.out.media(self._NATIVE[ev.kind])
+            return
         if ev.kind == Kind.PRESS:
             self._pressed_at = ev.t
             return
@@ -231,8 +255,8 @@ class Engine:
         """Rotation side effects follow state: the wheel consumes rotation and ducks the
         level (so each detent's native blip is soft); tool mode restores the real level
         first, then passes rotation through or consumes it per tool."""
-        wheel = self.state == State.WHEEL
-        on = not wheel and self.tool.rotation_passthrough
+        wheel = self.state == State.WHEEL and not self.paused
+        on = self.paused or (not wheel and self.tool.rotation_passthrough)
         for s in self.rotation_sources:
             if wheel:
                 s.set_passthrough(False)

@@ -20,6 +20,22 @@ Get the latest version from **[Releases](https://github.com/harsha20599/orbit/re
 | **macOS 13+** (Apple Silicon) | `Orbit-macOS.zip` | Unzip, drag **Orbit.app** to Applications. The first time, **right-click → Open** (it isn't notarized yet). Allow **Accessibility** when asked (System Settings → Privacy & Security → Accessibility). |
 | **Android 8+** | `Orbit-Android.apk` | Open it on the phone and allow installing from your browser. Then in Orbit, follow the setup checklist. If the Accessibility switch is greyed out: App info → ⋮ → **Allow restricted settings**. |
 
+## Before you start: set the dial's gestures
+
+Orbit reads the dial through the buds' music controls, so the dial has to send them.
+In the **Nothing X** app (on a Nothing phone: Settings → Connected devices → CMF Buds Pro 2)
+→ **Controls → Dial**, set:
+
+| Dial gesture | Set it to |
+|---|---|
+| Single press | Play / Pause |
+| Double press | Next track |
+| Triple press | Previous track |
+| Press and hold | Voice assistant |
+
+If the wheel never opens, this is almost always why. On Android, Orbit's setup screen has a
+**Dial presses** check that turns green the moment a press arrives.
+
 ## Using it
 
 | Do this | When a tool is active | When the wheel is open |
@@ -29,6 +45,9 @@ Get the latest version from **[Releases](https://github.com/harsha20599/orbit/re
 | **Double press** | open the wheel | close |
 | **Triple press** | back to the previous tool | close |
 | **Hold** | Windows: Claude dictation · Android: open Claude | close |
+
+Optional tools you can switch on in Settings include **Teleprompter** on Android (turn to move
+the script, press to play / pause, for apps like NEEWER Teleprompter).
 
 Everything is adjustable in **Settings** (tray / menu-bar icon → Settings…, or "Customize" in the
 Android app): which tools are on the wheel and in what order, what each press does (including
@@ -45,6 +64,22 @@ Android app): which tools are on the wheel and in what order, what each press do
   accessibility service draws the wheel and performs the actions you pick; it reads only the
   name of the app in front (for the app switcher) and, when you press with the Camera tool,
   the camera app's buttons to find its shutter.
+
+## Turning Orbit off
+
+- **Windows / macOS:** tray / menu-bar icon → untick **Orbit on**. The buds then work as if
+  Orbit weren't installed (press = play / pause, dial = volume). Clicking the tray icon opens
+  Settings; opening Orbit again while it runs does the same.
+- **Android:** the switch at the top of the app, **Turn off** on Orbit's notification, or the
+  **Orbit** Quick Settings tile (edit your Quick Settings to add it).
+
+## If something's off
+
+- **The wheel never opens:** set the dial gestures above. On Windows also check the tray
+  menu says **Buds connected**: the buds must be this PC's audio output.
+- **Can't find Orbit on Windows:** it lives in the system tray; click **^** by the clock.
+  Starting Orbit again opens its Settings.
+- **Android: the Accessibility switch is greyed out:** App info → ⋮ → **Allow restricted settings**.
 
 ## Help and feedback
 

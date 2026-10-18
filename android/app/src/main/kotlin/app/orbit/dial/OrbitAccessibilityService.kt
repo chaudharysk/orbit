@@ -166,6 +166,45 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
         if (!dispatchGesture(gesture, done, main)) { swipes.clear(); swiping = false }
     }
 
+    // ---- teleprompter: slow nudges, play / pause by label
+    private val playWords = Regex("^(play|pause|start|stop|resume)\\b|play/pause|play_pause", RegexOption.IGNORE_CASE)
+
+    override fun nudge(direction: Int) {
+        val dm = resources.displayMetrics
+        val x = dm.widthPixels / 2f
+        val mid = dm.heightPixels * 0.55f
+        val d = dm.heightPixels * 0.09f
+        val path = Path().apply { moveTo(x, mid + d / 2 * direction); lineTo(x, mid - d / 2 * direction) }
+        // 350 ms for ~9% of the screen: slow enough that the app scrolls without a fling
+        dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 350)).build(), null, main)
+    }
+
+    override fun tapPlayPause() {
+        val root = rootInActiveWindow
+        var hit: android.view.accessibility.AccessibilityNodeInfo? = null
+        if (root != null) {
+            val queue = ArrayDeque(listOf(root))
+            var seen = 0
+            while (queue.isNotEmpty() && seen < 600 && hit == null) {
+                val n = queue.removeFirst(); seen++
+                val label = "${n.contentDescription ?: ""} ${n.text ?: ""} ${n.viewIdResourceName ?: ""}".trim()
+                if (label.isNotEmpty() && playWords.containsMatchIn(label)) {
+                    hit = if (n.isClickable) n else n.parent?.takeIf { it.isClickable }
+                }
+                for (i in 0 until n.childCount) n.getChild(i)?.let(queue::addLast)
+            }
+        }
+        if (hit != null && hit.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
+            Orbit.log("teleprompter: pressed '${hit.contentDescription ?: hit.text ?: hit.viewIdResourceName}'")
+        } else {
+            val dm = resources.displayMetrics
+            val p = Path().apply { moveTo(dm.widthPixels / 2f, dm.heightPixels / 2f) }
+            dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(p, 0, 60)).build(), null, main)
+            Orbit.log("teleprompter: no play/pause button found, tapped the centre")
+        }
+        haptic()
+    }
+
     // ---- camera shutter
     private val shutterWords = Regex("shutter|take (a )?(photo|picture)|capture|photo button", RegexOption.IGNORE_CASE)
 

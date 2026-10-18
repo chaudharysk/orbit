@@ -264,3 +264,21 @@ def test_timeline_pans_the_view_sideways_and_press_plays():
     assert not any(k == "keys" for k, _ in out.log)      # no arrow keys: the playhead stays
     e.handle(ev(Kind.CLICK))
     assert out.log[-1] == ("keys", "space")
+
+
+def test_off_steps_aside_presses_go_to_music_and_dial_is_volume():
+    e, out, ui, rot = make()
+    e.set_tool("scroll")
+    e.handle(ev(Kind.DOUBLE))                       # wheel open...
+    e.set_paused(True)                              # ...turning Orbit off closes it
+    assert e.state == State.TOOL and rot.passthrough is True
+    e.handle(ev(Kind.ROTATE, 1))
+    assert not [k for k, _ in out.log if k == "scroll"]
+    for k in (Kind.CLICK, Kind.DOUBLE, Kind.TRIPLE):
+        e.handle(ev(k))
+    assert [c for k, c in out.log if k == "media"][-3:] == ["play_pause", "next", "previous"]
+    assert e.state == State.TOOL                    # double never opened the wheel
+    e.set_paused(False)
+    assert rot.passthrough is False                 # scroll consumes rotation again
+    e.handle(ev(Kind.DOUBLE))
+    assert e.state == State.WHEEL

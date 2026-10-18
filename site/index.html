@@ -166,6 +166,7 @@
       <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg><div><b>App switcher</b><span>Turn through your open apps, let go to jump.</span></div></div>
       <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/></svg><div><b>Volume &amp; brightness</b><span>Exact clicks when slow, big moves when fast.</span></div></div>
       <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg><div><b>Camera shutter</b><span>Press the dial, take the photo. Great with a tripod.</span></div></div>
+      <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="M8 8h8"/><path d="M8 11h5"/></svg><div><b>Teleprompter</b><span>Android: turn to move the script, press to play or pause. Switch it on in Customize.</span></div></div>
       <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><div><b>Undo, tabs, desktops</b><span>Turn back through history, tabs or virtual desktops.</span></div></div>
       <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M7 16h10"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/></svg><div><b>Your own shortcuts</b><span>Add any key combo to the wheel. Open any app with a triple press.</span></div></div>
     </div>
@@ -175,7 +176,10 @@
 <section id="download">
   <div class="wrap">
     <h2>Download</h2>
-    <p class="sub">Pair your CMF Buds Pro 2 with the device first. Then install Orbit:</p>
+    <p class="sub">Pair your CMF Buds Pro 2 with the device first. Then set the dial's gestures in the <b>Nothing X</b> app
+      (on Nothing phones: Settings → Connected devices → CMF Buds Pro 2) → Controls → Dial: <b>single press</b> Play/Pause,
+      <b>double</b> Next track, <b>triple</b> Previous track, <b>hold</b> Voice assistant. Orbit listens for exactly those.
+      Then install Orbit:</p>
     <div class="plat">
       <div><h3>Windows</h3><p>Windows 10 or 11. If Windows says "protected your PC", choose <i>More info → Run anyway</i>. Allow admin when Orbit starts (for press-and-hold).</p><a class="btn primary" href="https://github.com/harsha20599/orbit/releases/latest/download/Orbit-Windows-Setup.exe">Download for Windows</a></div>
       <div><h3>macOS</h3><p>macOS 13+ on Apple Silicon. Unzip, move to Applications, right-click → <i>Open</i> the first time, then allow Accessibility.</p><a class="btn primary" href="https://github.com/harsha20599/orbit/releases/latest/download/Orbit-macOS.zip">Download for Mac</a></div>
@@ -188,6 +192,8 @@
 <section id="faq">
   <div class="wrap">
     <h2>Questions</h2>
+    <details><summary>The wheel never opens when I double-press.</summary><p>Set the dial gestures in Nothing X (see Download above): double press must be "Next track". On Android, the app's "Dial presses" check turns green when a press arrives. On Windows, the tray menu should say "Buds connected".</p></details>
+    <details><summary>How do I turn Orbit off?</summary><p>Windows and Mac: tray / menu-bar icon → untick "Orbit on". Android: the switch at the top of the app, "Turn off" on its notification, or the Orbit Quick Settings tile. While off, the buds work normally.</p></details>
     <details><summary>Does it work with other earbuds?</summary><p>Not yet. Orbit is tuned to the CMF Buds Pro 2 dial: how it reports each click, its 16 steps and its timing. Other buds with a dial or volume wheel might partly work, but aren't supported.</p></details>
     <details><summary>Why do fast spins skip a little?</summary><p>The buds send at most about three dial steps a second and drop the rest. Orbit makes fast turning go further to make up for it; slow clicks are always exact.</p></details>
     <details><summary>Is it safe? What does it access?</summary><p>Orbit runs only on your device and sends nothing anywhere. The code is open on GitHub. On Android it uses an accessibility service to draw the wheel and do what you pick; it reads only the name of the app in front, and the camera's buttons when you use the Camera tool.</p></details>
