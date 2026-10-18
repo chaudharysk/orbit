@@ -66,8 +66,10 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
 
     fun setOrbitEnabled(on: Boolean) {
         if (::engine.isInitialized) engine.setEnabled(on)
-        if (!on) swipes.clear()
+        if (!on) { swipes.clear(); actionGeneration++ }
     }
+
+    private var actionGeneration = 0L
 
     private val ticker = object : Runnable {
         override fun run() { engine.tick(); main.postDelayed(this, 50) }
@@ -333,7 +335,8 @@ class OrbitAccessibilityService : AccessibilityService(), Actions {
             else -> return
         }
         // let the wheel's close animation clear the screen before a screenshot
-        main.postDelayed({ if (Orbit.enabled(this)) performGlobalAction(id) }, if (action == "screenshot") 450 else 0)
+        val generation = actionGeneration
+        main.postDelayed({ if (generation == actionGeneration && Orbit.enabled(this)) performGlobalAction(id) }, if (action == "screenshot") 450 else 0)
     }
 
     // ---- media: to the real player (we own the media buttons, so we can't just dispatch keys)
